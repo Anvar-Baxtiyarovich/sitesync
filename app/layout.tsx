@@ -1,5 +1,7 @@
 import "@/app/globals.css";
 import React from "react";
+import Navbar from "@/components/Navbar";
+import AuthProvider from "@/components/AuthProvider";
 
 export const metadata = {
   title: "SiteSync (ObyektSinxron) - B2B Industrial Site Management",
@@ -13,7 +15,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 antialiased">{children}</body>
+      <body className="min-h-screen bg-slate-50 antialiased flex flex-col">
+        <AuthProvider>
+          <Navbar />
+          <main className="flex-1">{children}</main>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

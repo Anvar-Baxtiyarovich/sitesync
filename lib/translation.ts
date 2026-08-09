@@ -69,3 +69,59 @@ Output strictly valid JSON with the exact keys "en" and "zh", each containing "t
 
   return parsed as TranslationOutput;
 }
+
+export interface GroupMessageTranslations {
+  uz: string;
+  ru: string;
+  en: string;
+  zh: string;
+}
+
+export async function translateGroupChatMessage(
+  text: string,
+  sourceLang: string
+): Promise<GroupMessageTranslations> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey || apiKey.includes("your-openai-key")) {
+    // Return mock 4-way translation for dev testing
+    return {
+      uz: sourceLang === "uz" ? text : `[UZ] ${text}`,
+      ru: sourceLang === "ru" ? text : `[RU] ${text}`,
+      en: sourceLang === "en" ? text : `[EN] ${text}`,
+      zh: sourceLang === "zh" ? text : `[ZH] ${text}`,
+    };
+  }
+
+  try {
+    const openai = new OpenAI({ apiKey });
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are an industrial construction multi-lingual AI translator. Translate the given message from ${sourceLang.toUpperCase()} simultaneously into Uzbek (uz), Russian (ru), English (en), and Simplified Chinese (zh). Return strict JSON with keys: "uz", "ru", "en", "zh".`,
+        },
+        { role: "user", content: text },
+      ],
+      temperature: 0.1,
+    });
+
+    const parsed = JSON.parse(response.choices[0].message.content || "{}");
+    return {
+      uz: parsed.uz || text,
+      ru: parsed.ru || text,
+      en: parsed.en || text,
+      zh: parsed.zh || text,
+    };
+  } catch (err) {
+    console.error("Chat Translation Error:", err);
+    return {
+      uz: text,
+      ru: text,
+      en: text,
+      zh: text,
+    };
+  }
+}

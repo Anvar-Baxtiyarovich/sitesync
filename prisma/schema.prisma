@@ -49,23 +49,127 @@ model Organization {
   @@map("organizations")
 }
 
+enum AuthProvider {
+  GOOGLE
+  TELEGRAM
+  WECHAT
+  EMAIL
+}
+
 model User {
   id             String       @id @default(uuid())
-  organizationId String
-  email          String       @unique
-  passwordHash   String
-  fullName       String
+  organizationId String?
+  email          String?      @unique
+  emailVerified  DateTime?    // Required by NextAuth
+  passwordHash   String?
+  fullName       String       @default("")
+  name           String?      // NextAuth uses 'name'
+  image          String?      // NextAuth uses 'image'
+  username       String?      @unique
+  jobTitle       String?      // e.g., 'Site Manager', 'Project Director', 'Lead Engineer'
+  avatarUrl      String?
+  googleId       String?      @unique
+  telegramId     String?      @unique
+  wechatId       String?      @unique
+  authProvider   AuthProvider @default(GOOGLE)
   role           Role         @default(LOCAL_MANAGER)
   nativeLanguage String       @default("uz") // 'uz', 'ru', 'en', 'zh'
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  accounts       Account[]
+  sessions       Session[]
   createdReports DailyReport[]
+  groupMemberships GroupMember[]
+  messagesSent   GroupMessage[]
+  contacts       UserContact[] @relation("UserContacts")
+  targetedBy     UserContact[] @relation("TargetContacts")
+  sentDirects    DirectMessage[] @relation("SentDirectMessages")
+  receivedDirects DirectMessage[] @relation("ReceivedDirectMessages")
 
   @@index([organizationId])
   @@map("users")
 }
+
+// =============================================
+// NextAuth.js Required Models
+// =============================================
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model UserContact {
+  id          String   @id @default(uuid())
+  userId      String
+  contactId   String
+  nickname    String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation("UserContacts", fields: [userId], references: [id], onDelete: Cascade)
+  contact     User     @relation("TargetContacts", fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contactId])
+  @@map("user_contacts")
+}
+
+model DirectMessage {
+  id               String   @id @default(uuid())
+  senderId         String
+  receiverId       String
+  sourceLanguage   String
+  contentRaw       String
+  translationsJson Json?    @db.JsonB
+  attachmentsJson  Json?    @db.JsonB
+  fileUrl          String?
+  fileName         String?
+  fileType         String?
+  fileSize         String?
+  createdAt        DateTime @default(now())
+
+  sender           User     @relation("SentDirectMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver         User     @relation("ReceivedDirectMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("direct_messages")
+}
+
 
 model Site {
   id             String       @id @default(uuid())
@@ -78,6 +182,7 @@ model Site {
 
   organization   Organization @relation(fields: [organizationId], references: [id])
   reports        DailyReport[]
+  directives     WorkDirective[]
 
   @@index([organizationId])
   @@map("sites")
@@ -102,6 +207,14 @@ model DailyReport {
   // Schema: { "en": { "tasks": "...", "equipment": "...", "issues": "..." }, "zh": { ... } }
   translationsJson    Json?            @db.JsonB
 
+  // Revision & Audit tracking
+  version             Int              @default(1)
+  isEdited            Boolean          @default(false)
+  lastEditedAt        DateTime?
+  editReason          String?
+  viewedByPartner     Boolean          @default(false)
+  viewedAt            DateTime?
+
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -111,4 +224,89 @@ model DailyReport {
   @@unique([siteId, reportDate])
   @@index([siteId, reportDate])
   @@map("daily_reports")
+}
+
+enum DirectiveStatus {
+  PENDING_ACCEPTANCE
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model WorkDirective {
+  id               String          @id @default(uuid())
+  siteId           String
+  titleRaw         String
+  descriptionRaw   String
+  priority         IssueSeverity   @default(MEDIUM)
+  status           DirectiveStatus @default(PENDING_ACCEPTANCE)
+  targetDate       DateTime?
+  translationsJson Json?           @db.JsonB
+  acceptedAt       DateTime?
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  site             Site            @relation(fields: [siteId], references: [id])
+
+  @@index([siteId])
+  @@map("work_directives")
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model ProjectGroup {
+  id          String        @id @default(uuid())
+  name        String
+  code        String        @unique // Invite Code (e.g. SYNC-WIND-88)
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members     GroupMember[]
+  messages    GroupMessage[]
+
+  @@map("project_groups")
+}
+
+model GroupMember {
+  id          String       @id @default(uuid())
+  groupId     String
+  userId      String
+  roleInGroup GroupRole    @default(MEMBER)
+  joinedAt    DateTime     @default(now())
+
+  group       ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model GroupMessage {
+  id               String       @id @default(uuid())
+  groupId          String
+  authorId         String
+  sourceLanguage   String       // 'uz', 'ru', 'en', 'zh'
+  contentRaw       String
+  translationsJson Json?        @db.JsonB // { "uz": "...", "ru": "...", "en": "...", "zh": "..." }
+  
+  // File & Media Attachment
+  fileUrl          String?
+  fileName         String?
+  fileType         String?      // 'IMAGE', 'PDF', 'DOCUMENT'
+  fileSize         String?
+  attachmentsJson  Json?        @db.JsonB // Array of { url, name, type, size }
+
+  createdAt        DateTime     @default(now())
+
+  group            ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author           User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("group_messages")
 }
