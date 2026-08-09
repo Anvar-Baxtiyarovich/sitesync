@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { signIn, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function UserOnboardingPage() {
+function OnboardingContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const authError = searchParams?.get('error');
+
   const [isLoading, setIsLoading] = useState(false);
   const [nativeLanguage, setNativeLanguage] = useState<'uz' | 'ru' | 'en' | 'zh'>('uz');
 
@@ -24,7 +27,8 @@ export default function UserOnboardingPage() {
       await signIn('google', {
         callbackUrl: `/${nativeLanguage}/groups`,
       });
-    } catch {
+    } catch (err) {
+      console.error('Sign-in error:', err);
       setIsLoading(false);
     }
   };
@@ -48,7 +52,7 @@ export default function UserOnboardingPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-8">
+      <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
         {/* Logo & Title */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/20 border border-emerald-500/30 rounded-2xl text-3xl mb-1">
@@ -62,6 +66,17 @@ export default function UserOnboardingPage() {
             <span className="text-emerald-400">Google hisobingiz bilan kirish — 1 soniya.</span>
           </p>
         </div>
+
+        {/* Auth Error Banner if present */}
+        {authError && (
+          <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl text-rose-200 text-xs space-y-1 text-center">
+            <p className="font-bold text-rose-300">⚠️ Auth Xatolik Yuz Berdi</p>
+            <p className="font-mono text-[11px] text-rose-400">Kodi: {authError}</p>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Vercel Environment variables (NEXTAUTH_URL, GOOGLE_CLIENT_ID) va Google Cloud Console Redirect URI tekshirilsin.
+            </p>
+          </div>
+        )}
 
         {/* Language selector */}
         <div className="space-y-2">
@@ -152,5 +167,17 @@ export default function UserOnboardingPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function UserOnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 }
