@@ -1,0 +1,114 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  LOCAL_MANAGER
+  FOREIGN_PARTNER
+  SYSTEM_ADMIN
+}
+
+enum WeatherCondition {
+  SUNNY
+  CLOUDY
+  RAINY
+  SNOWY
+  WINDY
+  EXTREME_HEAT
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  PROCESSING_TRANSLATION
+  TRANSLATED
+  FAILED
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  sites     Site[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  email          String       @unique
+  passwordHash   String
+  fullName       String
+  role           Role         @default(LOCAL_MANAGER)
+  nativeLanguage String       @default("uz") // 'uz', 'ru', 'en', 'zh'
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdReports DailyReport[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Site {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  location       String
+  code           String       @unique
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  reports        DailyReport[]
+
+  @@index([organizationId])
+  @@map("sites")
+}
+
+model DailyReport {
+  id               String           @id @default(uuid())
+  siteId           String
+  authorId         String
+  reportDate       DateTime         @db.Date
+  weatherCondition WeatherCondition
+  activeWorkers    Int
+  status           ReportStatus     @default(SUBMITTED)
+  sourceLanguage   String           // 'uz' or 'ru'
+  
+  // Raw input from Local Manager
+  tasksCompletedRaw   String
+  equipmentReceivedRaw String?
+  issuesEncounteredRaw String?
+
+  // Translation Payload stored in structured JSONB
+  // Schema: { "en": { "tasks": "...", "equipment": "...", "issues": "..." }, "zh": { ... } }
+  translationsJson    Json?            @db.JsonB
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  site             Site             @relation(fields: [siteId], references: [id])
+  author           User             @relation(fields: [authorId], references: [id])
+
+  @@unique([siteId, reportDate])
+  @@index([siteId, reportDate])
+  @@map("daily_reports")
+}
