@@ -90,15 +90,15 @@ export default function Navbar() {
       desc: 'Kunlik hisobot yuborish va topshiriqlar',
     },
     {
-      href: '/onboarding',
-      icon: '👤',
+      href: `/${currentLang}/settings`,
+      icon: '⚙️',
       label: {
         uz: 'Profilim & Sozlamalar',
         ru: 'Мой профиль и настройки',
         en: 'My Profile & Settings',
         zh: '我的个人资料与设置',
       },
-      desc: 'Google login, username va ona tili',
+      desc: 'Ism, username, lavozim va ona tilini sozlash',
     },
     {
       href: '/',
