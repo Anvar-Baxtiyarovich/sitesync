@@ -67,6 +67,7 @@ export default function ForeignPartnerDashboard() {
   const [directiveTitle, setDirectiveTitle]         = useState('');
   const [directiveDesc, setDirectiveDesc]           = useState('');
   const [directivePriority, setDirectivePriority]   = useState('HIGH');
+  const [directiveCategory, setDirectiveCategory]   = useState('CIVIL');
   const [directiveSubmitMsg, setDirectiveSubmitMsg] = useState<string | null>(null);
 
   // ── Fetch real reports from API ──
@@ -108,7 +109,12 @@ export default function ForeignPartnerDashboard() {
       const res = await fetch('/api/v1/directives', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titleRaw: directiveTitle, descriptionRaw: directiveDesc, priority: directivePriority }),
+        body: JSON.stringify({
+          titleRaw: directiveTitle,
+          descriptionRaw: directiveDesc,
+          priority: directivePriority,
+          category: directiveCategory,
+        }),
       });
       if (res.ok) {
         setDirectiveSubmitMsg(lang === 'zh' ? '✅ 工作指令已下发！' : '✅ Directive issued successfully!');
@@ -167,16 +173,24 @@ ${report.isEdited ? `⚠️ v${report.version} REVISED: ${report.editReason}` : 
               </button>
             ))}
           </div>
+
           <button onClick={() => setIsDirectiveModalOpen(true)}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2">
             <span>📝</span><span>{lang === 'zh' ? '下发工作指令' : 'Issue Directive'}</span>
           </button>
+
+          <a href="/api/v1/export/excel" download
+            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2">
+            <span>📊</span><span>{lang === 'zh' ? '导出 Excel' : 'Export Excel'}</span>
+          </a>
+
           {activeReport && (
             <button onClick={() => handleExportPdf(activeReport)} disabled={isExportingPdf}
               className="px-4 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 disabled:opacity-50">
               <span>📄</span><span>{isExportingPdf ? '...' : (lang === 'zh' ? '导出 PDF' : 'Export PDF')}</span>
             </button>
           )}
+
           {activeReport && (
             <button onClick={() => handleCopyWeChat(activeReport)}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2">
@@ -441,14 +455,27 @@ ${report.isEdited ? `⚠️ v${report.version} REVISED: ${report.editReason}` : 
                         className="w-full p-3.5 bg-slate-900 border border-slate-600 rounded-xl text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500" />}
                 </div>
               ))}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{lang === 'zh' ? '优先级' : 'Priority'}</label>
-                <select value={directivePriority} onChange={e => setDirectivePriority(e.target.value)}
-                  className="w-full p-3.5 bg-slate-900 border border-slate-600 rounded-xl text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                  <option value="MEDIUM">MEDIUM (普通)</option>
-                  <option value="HIGH">HIGH (紧急)</option>
-                  <option value="CRITICAL">CRITICAL (特急)</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{lang === 'zh' ? '优先级' : 'Priority'}</label>
+                  <select value={directivePriority} onChange={e => setDirectivePriority(e.target.value)}
+                    className="w-full p-3.5 bg-slate-900 border border-slate-600 rounded-xl text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="MEDIUM">MEDIUM (普通)</option>
+                    <option value="HIGH">HIGH (紧急)</option>
+                    <option value="CRITICAL">CRITICAL (特急)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{lang === 'zh' ? '工程类别' : 'Category'}</label>
+                  <select value={directiveCategory} onChange={e => setDirectiveCategory(e.target.value)}
+                    className="w-full p-3.5 bg-slate-900 border border-slate-600 rounded-xl text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="CIVIL">CIVIL (土建施工)</option>
+                    <option value="ELECTRICAL">ELECTRICAL (电气工程)</option>
+                    <option value="MECHANICAL">MECHANICAL (机械安装)</option>
+                    <option value="SAFETY">SAFETY (安全检查)</option>
+                    <option value="EQUIPMENT">EQUIPMENT (设备调拨)</option>
+                  </select>
+                </div>
               </div>
               {directiveSubmitMsg && (
                 <div className={`p-3.5 rounded-xl text-sm font-bold border ${directiveSubmitMsg.startsWith('✅') ? 'bg-emerald-900/40 border-emerald-700/40 text-emerald-300' : 'bg-red-900/40 border-red-700/40 text-red-300'}`}>

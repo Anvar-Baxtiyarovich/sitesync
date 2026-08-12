@@ -233,24 +233,32 @@ enum DirectiveStatus {
   PENDING_ACCEPTANCE
   ACCEPTED
   IN_PROGRESS
+  PENDING_APPROVAL
   COMPLETED
+  REJECTED
 }
 
 model WorkDirective {
-  id               String          @id @default(uuid())
-  siteId           String
-  titleRaw         String
-  descriptionRaw   String
-  priority         IssueSeverity   @default(MEDIUM)
-  status           DirectiveStatus @default(PENDING_ACCEPTANCE)
-  targetDate       DateTime?
-  translationsJson Json?           @db.JsonB
-  acceptedAt       DateTime?
+  id                  String          @id @default(uuid())
+  siteId              String
+  titleRaw            String
+  descriptionRaw      String
+  priority            IssueSeverity   @default(MEDIUM)
+  status              DirectiveStatus @default(PENDING_ACCEPTANCE)
+  category            String          @default("GENERAL") // CIVIL, ELECTRICAL, MECHANICAL, SAFETY, EQUIPMENT
+  progressPercent     Int             @default(0) // 0 - 100%
+  targetDate          DateTime?
+  translationsJson    Json?           @db.JsonB
+  acceptedAt          DateTime?
+  completionProofUrl String?
+  completionNotes     String?
+  approvedAt          DateTime?
+  rejectionReason     String?
 
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
-  site             Site            @relation(fields: [siteId], references: [id])
+  site                Site            @relation(fields: [siteId], references: [id])
 
   @@index([siteId])
   @@map("work_directives")

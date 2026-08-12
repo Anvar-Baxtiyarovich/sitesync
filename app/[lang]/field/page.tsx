@@ -22,11 +22,18 @@ interface DirectiveItem {
   titleRaw: string;
   descriptionRaw: string;
   priority: string;
-  status: 'PENDING_ACCEPTANCE' | 'ACCEPTED' | 'IN_PROGRESS' | 'COMPLETED';
+  category?: string;
+  status: 'PENDING_ACCEPTANCE' | 'ACCEPTED' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'COMPLETED' | 'REJECTED';
+  progressPercent?: number;
   targetDate?: string;
   createdAt: string;
   acceptedAt?: string | null;
+  completionNotes?: string;
+  completionProofUrl?: string;
+  rejectionReason?: string;
+  approvedAt?: string | null;
   uz?: { title: string; description: string };
+  zh?: { title: string; description: string };
 }
 
 const WEATHER_OPTIONS = [
@@ -209,12 +216,12 @@ export default function FieldReportForm() {
 
         {/* ── Directives Inbox ── */}
         {directivesList.length > 0 && (
-          <section className="bg-sky-950/60 border border-sky-700/50 rounded-2xl overflow-hidden">
+          <section className="bg-sky-950/60 border border-sky-700/50 rounded-2xl overflow-hidden shadow-xl">
             <div className="flex justify-between items-center px-4 py-3 border-b border-sky-700/40">
               <div className="flex items-center gap-2">
                 <span className="text-lg">📩</span>
                 <span className="font-bold text-sm text-sky-100">
-                  {lang === 'uz' ? 'Xorijiy Hamkor Topshiriqlari' : 'Поручения инвестора'}
+                  {lang === 'uz' ? 'Xorijiy Hamkor Topshiriqlari (Work Directives)' : 'Поручения инвестора'}
                 </span>
               </div>
               {pendingCount > 0 && (
@@ -225,45 +232,120 @@ export default function FieldReportForm() {
             </div>
 
             <div className="divide-y divide-sky-800/30">
-              {directivesList.map(dir => (
-                <div key={dir.id} className="p-4 space-y-2">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-white leading-snug">
-                        {dir.uz?.title || dir.titleRaw}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded border ${PRIORITY_COLORS[dir.priority] || PRIORITY_COLORS.MEDIUM}`}>
-                          {dir.priority}
-                        </span>
-                        {dir.targetDate && (
-                          <span className="text-xs text-slate-400">📅 {dir.targetDate}</span>
-                        )}
+              {directivesList.map(dir => {
+                const progress = dir.progressPercent ?? (dir.status === 'COMPLETED' ? 100 : dir.status === 'ACCEPTED' ? 25 : 0);
+                return (
+                  <div key={dir.id} className="p-4 space-y-3">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded border ${PRIORITY_COLORS[dir.priority] || PRIORITY_COLORS.MEDIUM}`}>
+                            {dir.priority}
+                          </span>
+                          {dir.category && (
+                            <span className="text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">
+                              🏷️ {dir.category}
+                            </span>
+                          )}
+                          {dir.targetDate && (
+                            <span className="text-xs text-slate-400">📅 {dir.targetDate}</span>
+                          )}
+                        </div>
+
+                        <p className="font-bold text-base text-white leading-snug">
+                          {dir.uz?.title || dir.titleRaw}
+                        </p>
                       </div>
+
+                      {/* Action buttons based on Directive Lifecycle Status */}
+                      {dir.status === 'PENDING_ACCEPTANCE' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleAcceptDirective(dir.id, 'ACCEPTED')}
+                          className="shrink-0 px-4 py-2 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition"
+                        >
+                          ✅ {lang === 'uz' ? 'Qabul qilish' : 'Принять'}
+                        </button>
+                      ) : dir.status === 'PENDING_APPROVAL' ? (
+                        <span className="shrink-0 text-xs font-bold text-amber-300 bg-amber-950/60 border border-amber-600/50 px-3 py-1.5 rounded-xl flex items-center gap-1">
+                          🔍 {lang === 'uz' ? 'Tekshiruvda (100%)' : 'На проверке'}
+                        </span>
+                      ) : dir.status === 'COMPLETED' ? (
+                        <span className="shrink-0 text-xs font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-600/50 px-3 py-1.5 rounded-xl flex items-center gap-1">
+                          ✔ {lang === 'uz' ? 'Bajarildi & Tasdiqlandi' : 'Завершено'}
+                        </span>
+                      ) : dir.status === 'REJECTED' ? (
+                        <span className="shrink-0 text-xs font-bold text-red-300 bg-red-950/60 border border-red-600/50 px-3 py-1.5 rounded-xl flex items-center gap-1">
+                          ⚠️ {lang === 'uz' ? 'Qayta ishlashga' : 'На доработку'}
+                        </span>
+                      ) : (
+                        <span className="shrink-0 text-xs font-bold text-sky-300 bg-sky-950/60 border border-sky-600/50 px-3 py-1.5 rounded-xl">
+                          ⚙️ {lang === 'uz' ? 'Jarayonda' : 'В работе'}
+                        </span>
+                      )}
                     </div>
 
-                    {dir.status === 'PENDING_ACCEPTANCE' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleAcceptDirective(dir.id, 'ACCEPTED')}
-                        className="shrink-0 px-4 py-2.5 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow transition"
-                      >
-                        ✅ {lang === 'uz' ? 'Qabul' : 'Принять'}
-                      </button>
-                    ) : (
-                      <span className="shrink-0 text-xs font-bold text-emerald-400 bg-emerald-900/40 border border-emerald-700/50 px-3 py-2 rounded-xl">
-                        ✔ {lang === 'uz' ? 'Qabul qilindi' : 'Принято'}
-                      </span>
+                    {(dir.uz?.description || dir.descriptionRaw) && (
+                      <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                        {dir.uz?.description || dir.descriptionRaw}
+                      </p>
+                    )}
+
+                    {/* Progress Bar & Interactive Updates */}
+                    {dir.status !== 'PENDING_ACCEPTANCE' && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-400 font-bold">
+                            📊 {lang === 'uz' ? 'Bajarilish ko\'rsatkichi:' : 'Прогресс:'}
+                          </span>
+                          <span className="font-black text-sky-400">{progress}%</span>
+                        </div>
+
+                        {/* Visual Progress Bar */}
+                        <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+                          <div
+                            className="h-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+
+                        {/* Quick Progress Buttons for Local Manager */}
+                        {dir.status !== 'COMPLETED' && dir.status !== 'PENDING_APPROVAL' && (
+                          <div className="flex gap-1.5 pt-1 overflow-x-auto">
+                            {[25, 50, 75, 100].map(pct => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() => handleAcceptDirective(dir.id, pct === 100 ? 'PENDING_APPROVAL' : 'IN_PROGRESS')}
+                                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition ${
+                                  progress === pct
+                                    ? 'bg-sky-600 text-white border-sky-500'
+                                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                                }`}
+                              >
+                                {pct === 100 ? (lang === 'uz' ? '🎯 100% (Topshirish)' : '🎯 100% (Сдать)') : `${pct}%`}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Proof Notes / Rejection Reason display */}
+                        {dir.completionNotes && (
+                          <div className="p-2.5 bg-emerald-950/30 border border-emerald-800/40 rounded-xl text-xs text-emerald-200">
+                            📝 <strong>{lang === 'uz' ? 'Ishchi hisoboti:' : 'Отчет:'}</strong> {dir.completionNotes}
+                          </div>
+                        )}
+
+                        {dir.rejectionReason && (
+                          <div className="p-2.5 bg-red-950/40 border border-red-700/40 rounded-xl text-xs text-red-200">
+                            ⚠️ <strong>{lang === 'uz' ? 'E\'tiroz:' : 'Замечание:'}</strong> {dir.rejectionReason}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-
-                  {(dir.uz?.description || dir.descriptionRaw) && (
-                    <p className="text-sm text-slate-400 leading-relaxed">
-                      {dir.uz?.description || dir.descriptionRaw}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}

@@ -22,6 +22,18 @@ export interface ReportData {
   };
 }
 
+/**
+ * Safely clean & format text for jsPDF rendering
+ */
+function cleanTextForPdf(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[‘’`]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/–/g, '-')
+    .replace(/—/g, '-');
+}
+
 export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   const doc = new jsPDF({
     orientation: 'p',
