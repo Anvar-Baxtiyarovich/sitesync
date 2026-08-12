@@ -107,7 +107,7 @@ function GroupsContent({ currentLang }: { currentLang: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 space-y-6">
+    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 pb-28 space-y-6">
       <header className="bg-slate-800/80 border border-slate-700 p-6 rounded-3xl backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">

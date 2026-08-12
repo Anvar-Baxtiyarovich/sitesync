@@ -177,7 +177,7 @@ export default function UserSettingsPage({ params }: { params: { lang: string } 
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 pb-28 space-y-6">
         {/* Toast Notification Banner */}
         {toastMessage && (
           <div

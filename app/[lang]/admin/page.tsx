@@ -264,7 +264,28 @@ export default function SuperAdminPanelPage({ params }: { params: { lang: string
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={async () => {
+                if (!confirm("Baza tozalanib, soxta akkauntlar o'chirilib, 4 ta real xodimlarga qaytarilsinmi?")) return;
+                try {
+                  const res = await fetch('/api/v1/admin/seed', { method: 'POST' });
+                  const data = await res.json();
+                  if (res.ok) {
+                    setToastMessage({ text: `✅ ${data.message}` });
+                    fetchUsers(); fetchGroups();
+                  }
+                } catch {
+                  setToastMessage({ text: '❌ Tozalashda xatolik yuz berdi.', isError: true });
+                }
+              }}
+              className="px-3.5 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5"
+            >
+              <span>🧹</span>
+              <span>Soxta Akkauntlarni Tozalash</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('CREATE_USER')}

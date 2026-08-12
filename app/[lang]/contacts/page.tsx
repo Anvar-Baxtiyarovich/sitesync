@@ -227,7 +227,7 @@ export default function ContactsPage({ params }: { params: { lang: string } }) {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 space-y-6">
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 pb-28 space-y-6">
         {/* Search Bar */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-lg flex items-center gap-3">
           <span className="text-lg text-slate-400">🔍</span>

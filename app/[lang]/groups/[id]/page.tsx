@@ -660,7 +660,7 @@ export default function GroupChatPage({ params }: { params: { lang: string; id: 
       </main>
 
       {/* Message Input Box & File Attachment Options */}
-      <footer className="bg-slate-800 border-t border-slate-700 p-4 sticky bottom-0 z-30 space-y-3">
+      <footer className="bg-slate-800 border-t border-slate-700 p-4 pb-20 sticky bottom-0 z-30 space-y-3">
         {/* Hidden File Input for Device Selection */}
         <input
           type="file"
