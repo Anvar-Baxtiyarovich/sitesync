@@ -113,8 +113,39 @@ export default function UserSettingsPage({ params }: { params: { lang: string } 
     );
   }
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setToastMessage({ text: '❌ Rasm hajmi 5MB dan oshmasligi kerak.', isError: true });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setAvatarUrl(event.target.result as string);
+        setToastMessage({ text: '✅ Qurilmadagi rasm tanlandi! Profilni saqlang.' });
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+      {/* Hidden Device File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        onChange={handleImageFileUpload}
+        className="hidden"
+      />
+
       {/* Top Header */}
       <header className="bg-slate-900 border-b border-slate-800 p-4 px-6 sticky top-0 z-30 shadow-lg">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -175,16 +206,31 @@ export default function UserSettingsPage({ params }: { params: { lang: string } 
             </h2>
 
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <img
-                src={avatarUrl || presetAvatars[0]}
-                alt="Profile Avatar"
-                className="w-24 h-24 rounded-3xl object-cover border-2 border-emerald-500 shadow-xl"
-              />
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <img
+                  src={avatarUrl || presetAvatars[0]}
+                  alt="Profile Avatar"
+                  className="w-24 h-24 rounded-3xl object-cover border-2 border-emerald-500 shadow-xl group-hover:opacity-80 transition"
+                />
+                <div className="absolute inset-0 bg-slate-950/60 rounded-3xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">
+                  <span>📷 O-zgartirish</span>
+                </div>
+              </div>
 
               <div className="space-y-3 flex-1 text-center sm:text-left">
-                <span className="text-xs font-bold text-slate-300 block">
-                  Tayyor Avatarlardan Tanlang yoki Rasm Linkini Kiriting:
-                </span>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                  {/* Upload from Device Button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-lg transition flex items-center gap-2"
+                  >
+                    <span>📁</span>
+                    <span>Qurilmadan Rasm Tanlash</span>
+                  </button>
+
+                  <span className="text-xs font-bold text-slate-400">yoki tayyor avatarlar:</span>
+                </div>
 
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                   {presetAvatars.map((url, idx) => (
@@ -202,7 +248,7 @@ export default function UserSettingsPage({ params }: { params: { lang: string } 
                 </div>
 
                 <input
-                  type="url"
+                  type="text"
                   placeholder="Yoki rasm URL manzilini kiriting (https://...)"
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
