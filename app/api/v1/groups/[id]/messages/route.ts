@@ -18,26 +18,30 @@ async function ensureGroupAndUserExist(groupId: string, authorName: string, auth
   });
 
   const username = `@${(authorName || "member").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
-  const email = `${username.replace("@", "")}@sitesync.io`;
-
-  // 2. Ensure User exists in PostgreSQL DB
-  const user = await db.user.upsert({
-    where: { email },
-    update: {
-      fullName: authorName || "Site Specialist",
-      jobTitle: authorJob || "Team Member",
-      avatarUrl: authorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-      nativeLanguage: lang || "uz",
-    },
-    create: {
-      email,
-      fullName: authorName || "Site Specialist",
-      username,
-      jobTitle: authorJob || "Team Member",
-      avatarUrl: authorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-      nativeLanguage: lang || "uz",
+  
+  // Try to find existing user first
+  let user = await db.user.findFirst({
+    where: {
+      OR: [
+        { fullName: authorName },
+        { username },
+      ],
     },
   });
+
+  if (!user) {
+    const email = `${username.replace("@", "")}@user.local`;
+    user = await db.user.create({
+      data: {
+        email,
+        fullName: authorName || "Site Specialist",
+        username,
+        jobTitle: authorJob || "Team Member",
+        avatarUrl: authorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+        nativeLanguage: lang || "uz",
+      },
+    });
+  }
 
   // 3. Ensure User is a member of the group
   try {

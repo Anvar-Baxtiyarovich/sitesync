@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { translateGroupChatMessage } from "@/lib/translation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+async function getCurrentUser() {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.email) {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+    });
+    if (user) return user;
+  }
+  return await db.user.findFirst({
+    orderBy: { createdAt: "asc" },
+  });
+}
 
 export async function GET(
   req: NextRequest,
@@ -10,7 +25,7 @@ export async function GET(
 ) {
   try {
     const contactId = params.contactId;
-    const currentUser = await db.user.findFirst({ where: { email: "anvar@sitesync.io" } });
+    const currentUser = await getCurrentUser();
 
     if (!currentUser) {
       return NextResponse.json({ messages: [] });
@@ -64,7 +79,7 @@ export async function POST(
       );
     }
 
-    const currentUser = await db.user.findFirst({ where: { email: "anvar@sitesync.io" } });
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Current user not found" }, { status: 404 });
     }

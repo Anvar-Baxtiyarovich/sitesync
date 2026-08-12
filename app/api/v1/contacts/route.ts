@@ -1,30 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-async function ensureDefaultUsersExist() {
-  const usersData = [
-    { email: "anvar@sitesync.io", fullName: "Anvar Khudoyberdiev", username: "@anvar_mgr", jobTitle: "Site Manager (Obyekt Boshlig'i)", nativeLanguage: "uz", avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" },
-    { email: "liwei@sitesync.io", fullName: "Li Wei (李伟)", username: "@liwei_epc", jobTitle: "EPC Project Director (项目总监)", nativeLanguage: "zh", avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150" },
-    { email: "sarah@sitesync.io", fullName: "Sarah Jenkins", username: "@sarah_qa", jobTitle: "QA/QC Lead Engineer", nativeLanguage: "en", avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" },
-    { email: "dmitry@sitesync.io", fullName: "Dmitry Ivanov", username: "@dmitry_civ", jobTitle: "Chief Civil Engineer", nativeLanguage: "ru", avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150" },
-  ];
-
-  for (const u of usersData) {
-    await db.user.upsert({
-      where: { email: u.email },
-      update: { fullName: u.fullName, username: u.username, jobTitle: u.jobTitle, nativeLanguage: u.nativeLanguage, avatarUrl: u.avatarUrl },
-      create: { email: u.email, fullName: u.fullName, username: u.username, jobTitle: u.jobTitle, nativeLanguage: u.nativeLanguage, avatarUrl: u.avatarUrl },
+async function getCurrentUser() {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.email) {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
     });
+    if (user) return user;
   }
+  return await db.user.findFirst({
+    orderBy: { createdAt: "asc" },
+  });
 }
 
 export async function GET() {
   try {
-    await ensureDefaultUsersExist();
-
-    const currentUser = await db.user.findFirst({ where: { email: "anvar@sitesync.io" } });
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ contacts: [] });
     }
@@ -36,7 +32,6 @@ export async function GET() {
     });
 
     if (contacts.length === 0) {
-      // Seed default contacts for Anvar
       const otherUsers = await db.user.findMany({
         where: { id: { not: currentUser.id } },
       });
@@ -76,9 +71,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { query, fullName, username, jobTitle, nativeLanguage } = body;
 
-    await ensureDefaultUsersExist();
-    const currentUser = await db.user.findFirst({ where: { email: "anvar@sitesync.io" } });
-
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Current user not found" }, { status: 404 });
     }
@@ -99,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     if (!targetUser && username) {
       const u = username.startsWith("@") ? username : `@${username}`;
-      const email = `${username.toLowerCase().replace("@", "")}@sitesync.io`;
+      const email = `${username.toLowerCase().replace("@", "")}@user.local`;
 
       targetUser = await db.user.upsert({
         where: { email },
@@ -155,7 +148,7 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const contactId = searchParams.get("contactId");
 
-    const currentUser = await db.user.findFirst({ where: { email: "anvar@sitesync.io" } });
+    const currentUser = await getCurrentUser();
     if (!currentUser || !contactId) {
       return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
     }
