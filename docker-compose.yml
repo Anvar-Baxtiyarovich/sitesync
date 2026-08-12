@@ -19,5 +19,16 @@ services:
     ports:
       - "6379:6379"
 
+  nllb_server:
+    build:
+      context: ./nllb_server
+      dockerfile: Dockerfile
+    container_name: sitesync_nllb_server
+    ports:
+      - "8000:8000"
+    environment:
+      - NLLB_MODEL_NAME=facebook/nllb-200-distilled-600M
+    restart: unless-stopped
+
 volumes:
   postgres_data:
