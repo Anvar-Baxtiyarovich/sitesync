@@ -2,6 +2,7 @@ import "@/app/globals.css";
 import React from "react";
 import Navbar from "@/components/Navbar";
 import AuthProvider from "@/components/AuthProvider";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import type { Viewport } from "next";
 
 export const metadata = {
@@ -38,8 +39,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-slate-950 text-slate-100 antialiased flex flex-col selection:bg-emerald-500 selection:text-white">
         <AuthProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
+          <NotificationProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

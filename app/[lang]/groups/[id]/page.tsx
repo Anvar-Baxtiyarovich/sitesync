@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useNotifications } from '@/components/NotificationProvider';
 
 interface AuthorUser {
   fullName: string;
@@ -290,11 +291,24 @@ export default function GroupChatPage({ params }: { params: { lang: string; id: 
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const { sendNotification, requestPermission, permission } = useNotifications();
+  const prevMessagesCountRef = useRef(0);
+
   const fetchMessages = async () => {
     try {
       const res = await fetch(`/api/v1/groups/${groupId}/messages`);
       const data = await res.json();
       if (data.messages) {
+        if (prevMessagesCountRef.current > 0 && data.messages.length > prevMessagesCountRef.current) {
+          const newest = data.messages[data.messages.length - 1];
+          sendNotification(
+            `💬 ${newest.author?.fullName || 'Yangi Xabar'}`,
+            newest.translationsJson?.[activeLang] || newest.contentRaw,
+            '💬',
+            'CHAT'
+          );
+        }
+        prevMessagesCountRef.current = data.messages.length;
         setMessages(data.messages);
       }
     } catch (err) {
@@ -410,8 +424,19 @@ export default function GroupChatPage({ params }: { params: { lang: string; id: 
           </div>
         </div>
 
-        {/* Action Buttons: Add Member & Language Switcher */}
-        <div className="flex items-center gap-3">
+        {/* Action Buttons: Add Member, Notifications & Language Switcher */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {permission !== 'granted' && (
+            <button
+              type="button"
+              onClick={requestPermission}
+              className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1"
+            >
+              <span>🔔</span>
+              <span>Bildirishnoma Yoqish</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsAddMemberOpen(true)}
