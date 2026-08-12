@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,9 @@ interface ProjectGroupItem {
 function GroupsContent({ currentLang }: { currentLang: string }) {
   const searchParams = useSearchParams();
   const shouldAutoCreate = searchParams?.get('create') === 'true';
+  const { data: session } = useSession();
+
+  const canCreateGroup = session?.user?.canCreateGroup !== false || session?.user?.role === 'SYSTEM_ADMIN' || session?.user?.email === 'xab8101@gmail.com';
 
   const [groups, setGroups] = useState<ProjectGroupItem[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(shouldAutoCreate);
@@ -54,8 +58,8 @@ function GroupsContent({ currentLang }: { currentLang: string }) {
 
   useEffect(() => {
     fetchGroups();
-    if (shouldAutoCreate) setIsCreateModalOpen(true);
-  }, [shouldAutoCreate]);
+    if (shouldAutoCreate && canCreateGroup) setIsCreateModalOpen(true);
+  }, [shouldAutoCreate, canCreateGroup]);
 
   const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,18 +79,27 @@ function GroupsContent({ currentLang }: { currentLang: string }) {
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
+
+    if (!canCreateGroup) {
+      setMsg("❌ Sizga yangi guruh yaratish huquqi berilmagan. Super Admin bilan bog'laning.");
+      return;
+    }
+
     try {
       const res = await fetch('/api/v1/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newGroupName, description: newGroupDesc }),
       });
+      const data = await res.json();
       if (res.ok) {
         setMsg('✅ Loyiha guruh muvaffaqiyatli yaratildi!');
         setNewGroupName('');
         setNewGroupDesc('');
         fetchGroups();
         setTimeout(() => setIsCreateModalOpen(false), 1200);
+      } else {
+        setMsg(`❌ ${data.error || "Xatolik yuz berdi."}`);
       }
     } catch {
       setMsg('❌ Xatolik yuz berdi.');

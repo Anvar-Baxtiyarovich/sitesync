@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +64,19 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (session?.user?.email) {
+      const user = await db.user.findUnique({
+        where: { email: session.user.email },
+      });
+      if (user && !user.canCreateGroup && user.role !== "SYSTEM_ADMIN") {
+        return NextResponse.json(
+          { error: "Sizga yangi guruh yaratish huquqi berilmagan. Super Admin bilan bog'laning." },
+          { status: 403 }
+        );
+      }
+    }
+
     const body = await req.json();
     const { name, description, code } = body;
 

@@ -14,6 +14,7 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       if (user.email) {
+        const isSuperAdmin = user.email === "xab8101@gmail.com";
         const cleanUsername = `@${user.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
         try {
           await db.user.update({
@@ -23,6 +24,10 @@ export const authOptions: NextAuthOptions = {
               avatarUrl: user.image || undefined,
               username: cleanUsername,
               authProvider: "GOOGLE",
+              role: isSuperAdmin ? "SYSTEM_ADMIN" : "LOCAL_MANAGER",
+              canCreateGroup: true,
+              canAcceptDirectives: true,
+              canSubmitReports: true,
             },
           });
         } catch (err) {
@@ -35,6 +40,7 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
         try {
+          const isSuperAdmin = user.email === "xab8101@gmail.com";
           const existingUser = await db.user.findUnique({
             where: { email: user.email },
           });
@@ -48,6 +54,7 @@ export const authOptions: NextAuthOptions = {
                 avatarUrl: existingUser.avatarUrl || user.image,
                 googleId: account.providerAccountId,
                 authProvider: "GOOGLE",
+                ...(isSuperAdmin ? { role: "SYSTEM_ADMIN" } : {}),
               },
             });
           }
@@ -79,6 +86,9 @@ export const authOptions: NextAuthOptions = {
               nativeLanguage: true,
               avatarUrl: true,
               role: true,
+              canCreateGroup: true,
+              canAcceptDirectives: true,
+              canSubmitReports: true,
             },
           });
           if (dbUser) {
@@ -87,6 +97,9 @@ export const authOptions: NextAuthOptions = {
             session.user.jobTitle = dbUser.jobTitle ?? undefined;
             session.user.nativeLanguage = dbUser.nativeLanguage || "uz";
             session.user.role = dbUser.role;
+            session.user.canCreateGroup = dbUser.canCreateGroup;
+            session.user.canAcceptDirectives = dbUser.canAcceptDirectives;
+            session.user.canSubmitReports = dbUser.canSubmitReports;
             if (dbUser.avatarUrl) session.user.image = dbUser.avatarUrl;
           }
         } catch (error) {

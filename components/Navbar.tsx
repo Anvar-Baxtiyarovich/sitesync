@@ -3,16 +3,36 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname() || '/';
+  const { data: session } = useSession();
+
+  const isSuperAdmin = session?.user?.role === 'SYSTEM_ADMIN' || session?.user?.email === 'xab8101@gmail.com';
 
   // Extract language from pathname e.g. /uz/groups -> uz
   const langMatch = pathname.match(/^\/(uz|ru|en|zh)/);
   const currentLang = langMatch ? langMatch[1] : 'uz';
 
   const menuItems = [
+    ...(isSuperAdmin
+      ? [
+          {
+            href: `/${currentLang}/admin`,
+            icon: '👑',
+            label: {
+              uz: 'Super Admin Panel',
+              ru: 'Панель администратора',
+              en: 'Super Admin Panel',
+              zh: '超级管理员面板',
+            },
+            desc: 'Foydalanuvchilar va ularning huquqlarini boshqarish',
+            highlightAdmin: true,
+          },
+        ]
+      : []),
     {
       href: `/${currentLang}/contacts`,
       icon: '📇',
@@ -117,6 +137,16 @@ export default function Navbar() {
 
           {/* Right Header Actions & Burger Button */}
           <div className="flex items-center gap-3">
+            {isSuperAdmin && (
+              <Link
+                href={`/${currentLang}/admin`}
+                className="flex items-center gap-2 px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 font-black text-xs rounded-xl shadow-md transition"
+              >
+                <span>👑</span>
+                <span>Admin Panel</span>
+              </Link>
+            )}
+
             {/* Quick Create Group Button */}
             <Link
               href={`/${currentLang}/groups?create=true`}

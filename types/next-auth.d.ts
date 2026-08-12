@@ -13,6 +13,9 @@ declare module "next-auth" {
       jobTitle?: string;
       nativeLanguage?: string;
       role?: string;
+      canCreateGroup?: boolean;
+      canAcceptDirectives?: boolean;
+      canSubmitReports?: boolean;
     };
   }
 
@@ -23,6 +26,9 @@ declare module "next-auth" {
     jobTitle?: string;
     nativeLanguage?: string;
     role?: string;
+    canCreateGroup?: boolean;
+    canAcceptDirectives?: boolean;
+    canSubmitReports?: boolean;
   }
 }
 

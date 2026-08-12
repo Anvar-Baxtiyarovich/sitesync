@@ -73,6 +73,9 @@ model User {
   wechatId       String?      @unique
   authProvider   AuthProvider @default(GOOGLE)
   role           Role         @default(LOCAL_MANAGER)
+  canCreateGroup Boolean      @default(true)
+  canAcceptDirectives Boolean @default(true)
+  canSubmitReports Boolean    @default(true)
   nativeLanguage String       @default("uz") // 'uz', 'ru', 'en', 'zh'
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

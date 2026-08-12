@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 interface ReportItem {
   id: string;
@@ -29,6 +30,9 @@ interface DirectiveItem {
 }
 
 export default function FieldReportForm() {
+  const { data: session } = useSession();
+  const canAcceptDirectives = session?.user?.canAcceptDirectives !== false || session?.user?.role === 'SYSTEM_ADMIN' || session?.user?.email === 'xab8101@gmail.com';
+
   const [lang, setLang] = useState<'uz' | 'ru'>('uz');
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -75,12 +79,18 @@ export default function FieldReportForm() {
   }, []);
 
   const handleAcceptDirective = async (directiveId: string, newStatus: string = 'ACCEPTED') => {
+    if (!canAcceptDirectives) {
+      alert("❌ Sizga Xitoylik sherikdan topshiriqlarni qabul qilish huquqi berilmagan. Super Admin bilan bog'laning.");
+      return;
+    }
+
     try {
       const res = await fetch('/api/v1/directives', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ directiveId, status: newStatus }),
       });
+      const data = await res.json();
       if (res.ok) {
         setDirectivesList((prev) =>
           prev.map((d) =>
@@ -89,6 +99,8 @@ export default function FieldReportForm() {
               : d
           )
         );
+      } else {
+        alert(`❌ ${data.error || "Xatolik yuz berdi"}`);
       }
     } catch (err) {
       console.error('Error updating directive status:', err);
