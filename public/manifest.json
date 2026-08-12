@@ -1,0 +1,22 @@
+{
+  "name": "SiteSync",
+  "short_name": "SiteSync",
+  "description": "AI-Powered Multilingual Industrial Construction Management Platform",
+  "start_url": "/uz/field",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?w=192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?w=512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
