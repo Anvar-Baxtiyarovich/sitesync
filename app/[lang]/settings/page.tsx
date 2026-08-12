@@ -9,6 +9,7 @@ export default function UserSettingsPage({ params }: { params: { lang: string } 
   const activeLang = params?.lang || 'uz';
   const { data: session, update: updateSession } = useSession();
   const router = useRouter();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
@@ -112,8 +113,6 @@ export default function UserSettingsPage({ params }: { params: { lang: string } 
       </div>
     );
   }
-
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
