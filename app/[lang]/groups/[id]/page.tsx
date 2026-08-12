@@ -304,6 +304,9 @@ export default function GroupChatPage({ params }: { params: { lang: string; id: 
 
   useEffect(() => {
     fetchMessages();
+    // 5 soniyada bir yangi xabarlarni tekshirish
+    const pollInterval = setInterval(fetchMessages, 5000);
+    return () => clearInterval(pollInterval);
   }, [groupId]);
 
   useEffect(() => {

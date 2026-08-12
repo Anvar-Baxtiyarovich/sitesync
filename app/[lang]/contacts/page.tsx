@@ -79,6 +79,9 @@ export default function ContactsPage({ params }: { params: { lang: string } }) {
 
   useEffect(() => {
     fetchContacts();
+    // 10 soniyada bir kontaktlarni yangilash
+    const pollInterval = setInterval(fetchContacts, 10000);
+    return () => clearInterval(pollInterval);
   }, []);
 
   const handleAddContact = async (e: React.FormEvent) => {
@@ -139,6 +142,21 @@ export default function ContactsPage({ params }: { params: { lang: string } }) {
   useEffect(() => {
     dmChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [directMessages]);
+
+  // Aktiv chat ochiq bo'lsa, 3 soniyada bir yangi xabarlarni tekshirish
+  useEffect(() => {
+    if (!activeContact) return;
+    const fetchDmMessages = async () => {
+      try {
+        const res = await fetch(`/api/v1/directs/${activeContact.id}/messages`);
+        const data = await res.json();
+        if (data.messages) setDirectMessages(data.messages);
+      } catch {}
+    };
+    fetchDmMessages();
+    const pollInterval = setInterval(fetchDmMessages, 3000);
+    return () => clearInterval(pollInterval);
+  }, [activeContact?.id]);
 
   const handleSendDirectMessage = async (e: React.FormEvent) => {
     e.preventDefault();
