@@ -153,7 +153,12 @@ export default function Navbar() {
               className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition"
             >
               <span>➕</span>
-              <span>Yangi Guruh Yaratish</span>
+              <span>{
+                currentLang === 'ru' ? 'Новая Группа' :
+                currentLang === 'en' ? 'New Group' :
+                currentLang === 'zh' ? '新建小组' :
+                'Yangi Guruh'
+              }</span>
             </Link>
 
             {/* Burger Menu Toggle Button */}
@@ -192,30 +197,44 @@ export default function Navbar() {
 
               {/* Navigation Items List */}
               <div className="space-y-2">
-                {menuItems.map((item) => (
+                {menuItems.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href.split('?')[0]));
+                  return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMenuOpen(false)}
                     className={`p-3.5 rounded-2xl border transition flex items-start gap-3.5 group ${
-                      item.highlight
-                        ? 'bg-emerald-600/20 border-emerald-500/40 hover:bg-emerald-600/30 text-white'
+                      isActive
+                        ? 'bg-emerald-600/20 border-emerald-500/50 ring-1 ring-emerald-500/30'
+                        : item.highlight
+                        ? 'bg-emerald-600/10 border-emerald-500/30 hover:bg-emerald-600/20 text-white'
                         : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600 text-slate-200'
                     }`}
                   >
-                    <span className="text-2xl p-1 bg-slate-900 rounded-xl border border-slate-800">
+                    <span className={`text-2xl p-1 rounded-xl border ${
+                      isActive ? 'bg-emerald-900/60 border-emerald-700/50' : 'bg-slate-900 border-slate-800'
+                    }`}>
                       {item.icon}
                     </span>
-                    <div>
-                      <span className="font-bold text-sm text-white block group-hover:text-emerald-400 transition">
+                    <div className="flex-1 min-w-0">
+                      <span className={`font-bold text-sm block transition ${
+                        isActive ? 'text-emerald-300' : 'text-white group-hover:text-emerald-400'
+                      }`}>
                         {item.label[currentLang as keyof typeof item.label] || item.label.uz}
                       </span>
                       <span className="text-[11px] text-slate-400 block mt-0.5">
                         {item.desc}
                       </span>
                     </div>
+                    {isActive && (
+                      <span className="shrink-0 text-[10px] font-black text-emerald-400 bg-emerald-900/40 border border-emerald-700/40 px-2 py-0.5 rounded-lg self-center">
+                        FAOL
+                      </span>
+                    )}
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
