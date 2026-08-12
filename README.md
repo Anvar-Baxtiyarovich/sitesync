@@ -7,14 +7,17 @@ SiteSync bridges language barriers and reporting friction on international indus
 ## 🚀 Key Features
 
 1. **Role-Based Access Control (RBAC)**:
-   - `LOCAL_MANAGER`: Mobile-optimized, touch-friendly daily report submission interface.
+   - `LOCAL_MANAGER`: Mobile-optimized, touch-friendly daily report submission interface with large touch targets.
    - `FOREIGN_PARTNER`: Desktop-optimized executive dashboard with real-time translation and equipment tracking.
-2. **Automated AI Translation Pipeline**:
+2. **Automated Hybrid AI Translation Pipeline**:
+   - Multi-stage engine: Self-hosted NLLB-600M -> OpenAI / Hugging Face -> 100% Free Google Translate Web Engine (Zero-Cost Vercel deployment).
    - Asynchronous processing via Redis & BullMQ.
-   - Dual-engine fallback (DeepL & OpenAI GPT-4o-mini) tailored for industrial/civil engineering vocabulary.
-3. **Multi-lingual Executive Dashboard**:
+   - Tailored for industrial/civil engineering vocabulary across 4 languages (UZ, RU, EN, ZH).
+3. **Multi-lingual Executive Dashboard & Real-Time Chat**:
+   - 4-Way auto-translation in group and 1-on-1 direct chats.
+   - Real-time polling (3s - 5s) for instant message delivery without page reloads.
    - One-click language toggle between Chinese (中文) and English (EN).
-   - Real-time WeChat text summary generator optimized for messaging limits.
+   - Real-time WeChat text summary generator.
 4. **Export & Sharing Capabilities**:
    - Instant PDF generation and WeChat summary clipboard export.
 
@@ -23,10 +26,10 @@ SiteSync bridges language barriers and reporting friction on international indus
 ## 🛠 Project Tech Stack
 
 - **Framework**: Next.js 14+ (App Router, React 18, TypeScript)
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS (Unified Dark Theme & Glassmorphism)
 - **Database**: PostgreSQL & Prisma ORM
 - **Queue/Worker**: Redis & BullMQ
-- **Translation API**: OpenAI GPT-4o-mini / DeepL API
+- **Translation Engine**: Self-Hosted NLLB-600M FastAPI / Free Engine ($0/mo on Vercel)
 
 ---
 
@@ -42,7 +45,7 @@ Copy `.env.example` to `.env`:
 cp .env.example .env
 ```
 
-### 3. Spin up PostgreSQL & Redis
+### 3. Spin up PostgreSQL, Redis & NLLB Translation Server
 ```bash
 docker-compose up -d
 ```
@@ -80,20 +83,27 @@ sitesync/
 ├── app/
 │   ├── [lang]/
 │   │   ├── dashboard/page.tsx    # Foreign Partner Executive Dashboard (ZH/EN)
-│   │   └── field/page.tsx        # Local Manager Input Form (UZ/RU)
-│   ├── api/v1/reports/route.ts  # Daily Report Submission API
+│   │   ├── field/page.tsx        # Local Manager Input Form (UZ/RU)
+│   │   ├── groups/page.tsx       # Group Chat List & Creation
+│   │   ├── groups/[id]/page.tsx  # 4-Way Multilingual Live Group Chat
+│   │   └── contacts/page.tsx     # 1-on-1 Multilingual Direct Chat
+│   ├── api/v1/                   # REST API Endpoints
 │   ├── layout.tsx
 │   └── page.tsx                  # Portal Landing Page
-├── components/                    # UI Components
+├── components/                    # UI Components (Navbar, etc.)
 ├── lib/
 │   ├── db.ts                     # Prisma Database Client
 │   ├── queue.ts                  # BullMQ Producer Setup
-│   └── translation.ts            # Industrial Translation Engine
+│   └── translation.ts            # Hybrid Industrial Translation Engine
+├── nllb_server/                  # FastAPI NLLB-600M Translation Engine
+│   ├── main.py
+│   ├── Dockerfile
+│   └── requirements.txt
 ├── prisma/
 │   └── schema.prisma             # PostgreSQL Database Schema
 ├── worker/
 │   └── translationWorker.ts      # BullMQ Async Translation Worker
-├── docker-compose.yml            # Local Postgres & Redis Services
+├── docker-compose.yml            # Local Postgres, Redis & NLLB Services
 ├── package.json
 └── README.md
 ```
