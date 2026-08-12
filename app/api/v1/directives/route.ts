@@ -32,13 +32,23 @@ export async function GET() {
           targetDate: "2026-08-15",
           createdAt: "2026-08-09T22:00:00Z",
           acceptedAt: "2026-08-10T08:30:00Z",
-          zh: {
-            title: "加快5号风机转子安装",
-            description: "预计本周末有强风。优先在周五前完成5号风机的转子组装。",
-          },
-          uz: {
-            title: "5-sonli shamol turbinasi rotorini o'rnatishni tezlashtirish",
-            description: "Dam olish kunlari kuchli shamol kutilmoqda. Juma kuniga qadar 5-turbina rotorini yig'ishni birinchi o'ringa qo'ying.",
+          translationsJson: {
+            uz: {
+              title: "5-sonli shamol turbinasi rotorini o'rnatishni tezlashtirish",
+              description: "Dam olish kunlari kuchli shamol kutilmoqda. Juma kuniga qadar 5-turbina rotorini yig'ishni birinchi o'ringa qo'ying.",
+            },
+            ru: {
+              title: "Ускорить монтаж ротора ветротурбины №5",
+              description: "В эти выходные ожидается сильный ветер. Приоритет: завершить сборку ротора для Турбины №5 до пятницы.",
+            },
+            en: {
+              title: "Accelerate Wind Turbine #5 Rotor Installation",
+              description: "High winds expected this weekend. Priority shift to complete rotor assembly for Turbine #5 before Friday.",
+            },
+            zh: {
+              title: "加快5号风机转子安装",
+              description: "预计本周末有强风。优先在周五前完成5号风机的转子组装。",
+            },
           },
         },
         {
@@ -54,13 +64,23 @@ export async function GET() {
           targetDate: "2026-08-12",
           createdAt: "2026-08-08T15:30:00Z",
           acceptedAt: "2026-08-08T16:00:00Z",
-          zh: {
-            title: "110kV变电站接地系统检验",
-            description: "变压器到货前核实变电站接地网电阻值。",
-          },
-          uz: {
-            title: "110kV podstansiya yerlashtirish tizimini tekshirish",
-            description: "Transformator kelishidan oldin podstansiya yerlashtirish qarshiligini tekshiring.",
+          translationsJson: {
+            uz: {
+              title: "110kV podstansiya yerlashtirish tizimini tekshirish",
+              description: "Transformator kelishidan oldin podstansiya yerlashtirish qarshiligini tekshiring.",
+            },
+            ru: {
+              title: "Проверка системы заземления подстанции 110 кВ",
+              description: "Проверьте значения сопротивления заземляющей сетки подстанции до доставки трансформатора.",
+            },
+            en: {
+              title: "110kV Substation Earthing System Inspection",
+              description: "Verify resistance values on sub-station grounding grid before transformer delivery.",
+            },
+            zh: {
+              title: "110kV变电站接地系统检验",
+              description: "变压器到货前核实变电站接地网电阻值。",
+            },
           },
         },
         {
@@ -75,13 +95,23 @@ export async function GET() {
           targetDate: "2026-08-10",
           createdAt: "2026-08-08T10:00:00Z",
           acceptedAt: "2026-08-08T11:00:00Z",
-          zh: {
-            title: "变电站混凝土养护质量抽检",
-            description: "对110kV变电站混凝土基础养护垫层进行塌落度和湿度测试。",
-          },
-          uz: {
-            title: "Podstansiya betoni parvarishini sifat nazoratidan o'tkazish",
-            description: "110kV podstansiya poydevor betonida namlik va pishiqlik testlarini o'tkazing.",
+          translationsJson: {
+            uz: {
+              title: "Podstansiya betoni parvarishini sifat nazoratidan o'tkazish",
+              description: "110kV podstansiya poydevor betonida namlik va pishiqlik testlarini o'tkazing.",
+            },
+            ru: {
+              title: "Контроль качества ухода за бетоном подстанции",
+              description: "Проведите испытания на осадку конуса и влажность фундамента подстанции 110 кВ.",
+            },
+            en: {
+              title: "Quality Assurance Check on Substation Concrete Curing",
+              description: "Perform slump and moisture test on 110kV substation concrete foundation curing pads.",
+            },
+            zh: {
+              title: "变电站混凝土养护质量抽检",
+              description: "对110kV变电站混凝土基础养护垫层进行塌落度和湿度测试。",
+            },
           },
         },
       ];
@@ -162,8 +192,6 @@ export async function POST(req: NextRequest) {
       targetDate: targetDate || new Date().toISOString().split("T")[0],
       createdAt: new Date().toISOString(),
       acceptedAt: null,
-      zh: { title: titleRaw, description: descriptionRaw },
-      uz: { title: translatedTitle.uz, description: translatedDesc.uz },
       translationsJson,
     };
 

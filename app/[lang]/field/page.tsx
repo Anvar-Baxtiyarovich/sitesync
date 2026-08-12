@@ -32,6 +32,7 @@ interface DirectiveItem {
   completionProofUrl?: string;
   rejectionReason?: string;
   approvedAt?: string | null;
+  translationsJson?: Record<string, { title?: string; description?: string }>;
   uz?: { title: string; description: string };
   zh?: { title: string; description: string };
 }
@@ -253,7 +254,7 @@ export default function FieldReportForm() {
                         </div>
 
                         <p className="font-bold text-base text-white leading-snug">
-                          {dir.uz?.title || dir.titleRaw}
+                          {dir.translationsJson?.[lang]?.title || dir.uz?.title || dir.titleRaw}
                         </p>
                       </div>
 
@@ -268,11 +269,11 @@ export default function FieldReportForm() {
                         </button>
                       ) : dir.status === 'PENDING_APPROVAL' ? (
                         <span className="shrink-0 text-xs font-bold text-amber-300 bg-amber-950/60 border border-amber-600/50 px-3 py-1.5 rounded-xl flex items-center gap-1">
-                          🔍 {lang === 'uz' ? 'Tekshiruvda (100%)' : 'На проверке'}
+                          🔍 {lang === 'uz' ? 'Tekshiruvda (100%)' : 'На проверке (100%)'}
                         </span>
                       ) : dir.status === 'COMPLETED' ? (
                         <span className="shrink-0 text-xs font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-600/50 px-3 py-1.5 rounded-xl flex items-center gap-1">
-                          ✔ {lang === 'uz' ? 'Bajarildi & Tasdiqlandi' : 'Завершено'}
+                          ✔ {lang === 'uz' ? 'Bajarildi & Tasdiqlandi' : 'Завершено и подтверждено'}
                         </span>
                       ) : dir.status === 'REJECTED' ? (
                         <span className="shrink-0 text-xs font-bold text-red-300 bg-red-950/60 border border-red-600/50 px-3 py-1.5 rounded-xl flex items-center gap-1">
@@ -280,14 +281,14 @@ export default function FieldReportForm() {
                         </span>
                       ) : (
                         <span className="shrink-0 text-xs font-bold text-sky-300 bg-sky-950/60 border border-sky-600/50 px-3 py-1.5 rounded-xl">
-                          ⚙️ {lang === 'uz' ? 'Jarayonda' : 'В работе'}
+                          ⚙️ {lang === 'uz' ? 'Jarayonda' : 'В процессе'}
                         </span>
                       )}
                     </div>
 
-                    {(dir.uz?.description || dir.descriptionRaw) && (
+                    {(dir.translationsJson?.[lang]?.description || dir.uz?.description || dir.descriptionRaw) && (
                       <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                        {dir.uz?.description || dir.descriptionRaw}
+                        {dir.translationsJson?.[lang]?.description || dir.uz?.description || dir.descriptionRaw}
                       </p>
                     )}
 
