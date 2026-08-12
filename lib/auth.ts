@@ -7,56 +7,90 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
   ],
-  callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider === "google") {
-        const email = user.email;
-        if (!email) return false;
+  events: {
+    async createUser({ user }) {
+      if (user.email) {
+        const cleanUsername = `@${user.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
         try {
           await db.user.update({
-            where: { email },
+            where: { id: user.id },
             data: {
               fullName: user.name || "",
-              name: user.name,
-              image: user.image,
-              avatarUrl: user.image,
-              googleId: account.providerAccountId,
+              avatarUrl: user.image || undefined,
+              username: cleanUsername,
               authProvider: "GOOGLE",
             },
           });
-        } catch {
-          // User not yet created by adapter — will be patched on next sign-in
+        } catch (err) {
+          console.error("Error setting initial user data on creation:", err);
+        }
+      }
+    },
+  },
+  callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.email) {
+        try {
+          const existingUser = await db.user.findUnique({
+            where: { email: user.email },
+          });
+          if (existingUser) {
+            await db.user.update({
+              where: { email: user.email },
+              data: {
+                fullName: existingUser.fullName || user.name || "",
+                name: user.name,
+                image: user.image,
+                avatarUrl: existingUser.avatarUrl || user.image,
+                googleId: account.providerAccountId,
+                authProvider: "GOOGLE",
+              },
+            });
+          }
+        } catch (err) {
+          console.error("Error updating user on sign-in:", err);
         }
       }
       return true;
     },
 
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-        const dbUser = await db.user.findUnique({
-          where: { id: user.id },
-          select: {
-            id: true,
-            fullName: true,
-            username: true,
-            jobTitle: true,
-            nativeLanguage: true,
-            avatarUrl: true,
-            role: true,
-          },
-        });
-        if (dbUser) {
-          session.user.fullName = dbUser.fullName;
-          session.user.username = dbUser.username ?? undefined;
-          session.user.jobTitle = dbUser.jobTitle ?? undefined;
-          session.user.nativeLanguage = dbUser.nativeLanguage;
-          session.user.role = dbUser.role;
-          if (dbUser.avatarUrl) session.user.image = dbUser.avatarUrl;
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              id: true,
+              fullName: true,
+              username: true,
+              jobTitle: true,
+              nativeLanguage: true,
+              avatarUrl: true,
+              role: true,
+            },
+          });
+          if (dbUser) {
+            session.user.fullName = dbUser.fullName || session.user.name || "";
+            session.user.username = dbUser.username ?? undefined;
+            session.user.jobTitle = dbUser.jobTitle ?? undefined;
+            session.user.nativeLanguage = dbUser.nativeLanguage || "uz";
+            session.user.role = dbUser.role;
+            if (dbUser.avatarUrl) session.user.image = dbUser.avatarUrl;
+          }
+        } catch (error) {
+          console.error("Error fetching session user from DB:", error);
         }
       }
       return session;
@@ -67,7 +101,7 @@ export const authOptions: NextAuthOptions = {
     error: "/onboarding",
   },
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
