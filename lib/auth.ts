@@ -71,6 +71,19 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
       }
+      if (token.id) {
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: token.id as string },
+            select: { role: true },
+          });
+          if (dbUser) {
+            token.role = dbUser.role;
+          }
+        } catch {
+          // ignore
+        }
+      }
       return token;
     },
 

@@ -169,6 +169,13 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Ruxsat etilmadi. Seans mavjud emas." },
+        { status: 401 }
+      );
+    }
+
     const groupId = params.id;
     const body = await req.json();
     const {

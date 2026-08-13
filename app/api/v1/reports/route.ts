@@ -112,9 +112,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const author = currentUser || (await db.user.findFirst());
+    const author = currentUser;
     if (!author) {
-      return NextResponse.json({ error: "Author not found" }, { status: 401 });
+      return NextResponse.json({ error: "Ruxsat etilmadi. Seans mavjud emas." }, { status: 401 });
+    }
+
+    if (!author.canSubmitReports && author.role !== "SYSTEM_ADMIN" && author.role !== "LOCAL_MANAGER") {
+      return NextResponse.json({ error: "Hisobot yuborish huquqingiz yo'q." }, { status: 403 });
     }
 
     const parsedDate = reportDate ? new Date(reportDate) : new Date();
@@ -184,7 +188,7 @@ export async function PUT(req: NextRequest) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Ruxsat etilmadi. Seans mavjud emas." }, { status: 401 });
     }
 
     const body = await req.json();
@@ -215,6 +219,13 @@ export async function PUT(req: NextRequest) {
     }
 
     if (report) {
+      if (report.authorId !== currentUser.id && currentUser.role !== "SYSTEM_ADMIN") {
+        return NextResponse.json(
+          { error: "Faqat o'zingiz yaratgan hisobotlarni tahrirlashingiz mumkin." },
+          { status: 403 }
+        );
+      }
+
       const updatedReport = await db.dailyReport.update({
         where: { id: report.id },
         data: {

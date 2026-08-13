@@ -148,10 +148,17 @@ export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   doc.text(isZh ? 'DAILY LOG REPORT (ENGLISH / TRANSLATED)' : 'DAILY LOG REPORT', 14, y);
   y += 6;
 
+  const lineHeight = 4.5;
+  const boxPadding = 14;
+
   // 1. Tasks Completed
   doc.setFillColor(...lightBg);
   doc.setDrawColor(...borderColor);
-  doc.roundedRect(14, y, pageWidth - 28, 26, 2, 2, 'FD');
+  const rawTasks = reportData.en.tasks || reportData.zh.tasks || '';
+  const taskText = cleanTextForPdf(rawTasks);
+  const splitTasks = doc.splitTextToSize(taskText, pageWidth - 36);
+  const tasksBoxHeight = Math.max(22, boxPadding + splitTasks.length * lineHeight);
+  doc.roundedRect(14, y, pageWidth - 28, tasksBoxHeight, 2, 2, 'FD');
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
@@ -161,16 +168,18 @@ export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 41, 59);
-  const rawTasks = reportData.en.tasks || reportData.zh.tasks || '';
-  const taskText = cleanTextForPdf(rawTasks);
-  const splitTasks = doc.splitTextToSize(taskText, pageWidth - 36);
   doc.text(splitTasks, 18, y + 13);
 
-  y += 32;
+  y += tasksBoxHeight + 6;
 
   // 2. Equipment Received
   doc.setFillColor(...lightBg);
-  doc.roundedRect(14, y, pageWidth - 28, 26, 2, 2, 'FD');
+  doc.setDrawColor(...borderColor);
+  const rawEquip = reportData.en.equipment || reportData.zh.equipment || 'N/A';
+  const equipText = cleanTextForPdf(rawEquip);
+  const splitEquip = doc.splitTextToSize(equipText, pageWidth - 36);
+  const equipBoxHeight = Math.max(22, boxPadding + splitEquip.length * lineHeight);
+  doc.roundedRect(14, y, pageWidth - 28, equipBoxHeight, 2, 2, 'FD');
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
@@ -180,17 +189,18 @@ export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 41, 59);
-  const rawEquip = reportData.en.equipment || reportData.zh.equipment || 'N/A';
-  const equipText = cleanTextForPdf(rawEquip);
-  const splitEquip = doc.splitTextToSize(equipText, pageWidth - 36);
   doc.text(splitEquip, 18, y + 13);
 
-  y += 32;
+  y += equipBoxHeight + 6;
 
   // 3. Issues & Delays (Amber Highlight)
   doc.setFillColor(...amberBg);
   doc.setDrawColor(251, 191, 36);
-  doc.roundedRect(14, y, pageWidth - 28, 26, 2, 2, 'FD');
+  const rawIssues = reportData.en.issues || reportData.zh.issues || 'No issues reported';
+  const issueText = cleanTextForPdf(rawIssues);
+  const splitIssues = doc.splitTextToSize(issueText, pageWidth - 36);
+  const issuesBoxHeight = Math.max(22, boxPadding + splitIssues.length * lineHeight);
+  doc.roundedRect(14, y, pageWidth - 28, issuesBoxHeight, 2, 2, 'FD');
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
@@ -200,12 +210,9 @@ export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(120, 53, 15);
-  const rawIssues = reportData.en.issues || reportData.zh.issues || 'No issues reported';
-  const issueText = cleanTextForPdf(rawIssues);
-  const splitIssues = doc.splitTextToSize(issueText, pageWidth - 36);
   doc.text(splitIssues, 18, y + 13);
 
-  y += 34;
+  y += issuesBoxHeight + 8;
 
   // --- Turbine Equipment Delivery Section ---
   doc.setFontSize(11);

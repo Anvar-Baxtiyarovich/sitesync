@@ -170,6 +170,7 @@ model DirectMessage {
   sender           User     @relation("SentDirectMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver         User     @relation("ReceivedDirectMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
+  @@index([senderId, receiverId, createdAt])
   @@map("direct_messages")
 }
 
@@ -318,6 +319,6 @@ model GroupMessage {
   group            ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   author           User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  @@index([groupId])
+  @@index([groupId, createdAt])
   @@map("group_messages")
 }
