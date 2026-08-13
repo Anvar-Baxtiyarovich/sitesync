@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ensureDefaultPersonnelSeeded } from "@/lib/seed-users";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ async function isSystemAdmin() {
 
 export async function GET() {
   try {
+    await ensureDefaultPersonnelSeeded();
+
     const adminCheck = await isSystemAdmin();
     if (!adminCheck) {
       return NextResponse.json(

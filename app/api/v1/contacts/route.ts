@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ensureDefaultPersonnelSeeded } from "@/lib/seed-users";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ async function getCurrentUser() {
 
 export async function GET() {
   try {
+    await ensureDefaultPersonnelSeeded();
+
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ contacts: [] });
@@ -63,6 +66,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureDefaultPersonnelSeeded();
+
     const body = await req.json();
     const { query, fullName, username, jobTitle, nativeLanguage } = body;
 
@@ -93,6 +98,27 @@ export async function POST(req: NextRequest) {
         where: { email },
         update: { fullName: fullName || "Specialist", jobTitle: jobTitle || "Field Engineer", nativeLanguage: nativeLanguage || "uz" },
         create: { email, username: u, fullName: fullName || "Specialist", jobTitle: jobTitle || "Field Engineer", nativeLanguage: nativeLanguage || "uz", avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" },
+      });
+    }
+
+    if (!targetUser && query) {
+      const cleanQuery = query.trim().replace("@", "");
+      const isEmail = cleanQuery.includes("@");
+      const email = isEmail ? cleanQuery : `${cleanQuery.toLowerCase()}@sitesync.io`;
+      const u = cleanQuery.startsWith("@") ? cleanQuery : `@${cleanQuery.toLowerCase()}`;
+      const formattedName = cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1);
+
+      targetUser = await db.user.upsert({
+        where: { email },
+        update: {},
+        create: {
+          email,
+          username: u,
+          fullName: formattedName,
+          jobTitle: "Project Specialist",
+          nativeLanguage: "uz",
+          avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+        },
       });
     }
 
