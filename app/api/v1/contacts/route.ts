@@ -16,43 +16,16 @@ async function getCurrentUser() {
 
 export async function GET() {
   try {
-    await ensureDefaultPersonnelSeeded();
-
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ contacts: [] });
     }
 
-    let contacts = await db.userContact.findMany({
+    const contacts = await db.userContact.findMany({
       where: { userId: currentUser.id },
       include: { contact: true },
       orderBy: { createdAt: "desc" },
     });
-
-    if (contacts.length === 0) {
-      const otherUsers = await db.user.findMany({
-        where: { id: { not: currentUser.id } },
-      });
-
-      for (const other of otherUsers) {
-        try {
-          await db.userContact.create({
-            data: {
-              userId: currentUser.id,
-              contactId: other.id,
-            },
-          });
-        } catch {
-          // Ignore duplicate constraint if exists
-        }
-      }
-
-      contacts = await db.userContact.findMany({
-        where: { userId: currentUser.id },
-        include: { contact: true },
-        orderBy: { createdAt: "desc" },
-      });
-    }
 
     return NextResponse.json({ contacts });
   } catch (error) {
@@ -66,8 +39,6 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureDefaultPersonnelSeeded();
-
     const body = await req.json();
     const { query, fullName, username, jobTitle, nativeLanguage } = body;
 
@@ -82,6 +53,7 @@ export async function POST(req: NextRequest) {
       targetUser = await db.user.findFirst({
         where: {
           OR: [
+            { email: { equals: query.trim().toLowerCase(), mode: "insensitive" } },
             { username: { contains: cleanQuery, mode: "insensitive" } },
             { email: { contains: cleanQuery, mode: "insensitive" } },
             { fullName: { contains: cleanQuery, mode: "insensitive" } },
@@ -102,11 +74,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (!targetUser && query) {
-      const cleanQuery = query.trim().replace("@", "");
+      const cleanQuery = query.trim();
       const isEmail = cleanQuery.includes("@");
-      const email = isEmail ? cleanQuery : `${cleanQuery.toLowerCase()}@sitesync.io`;
-      const u = cleanQuery.startsWith("@") ? cleanQuery : `@${cleanQuery.toLowerCase()}`;
-      const formattedName = cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1);
+      const email = isEmail ? cleanQuery.toLowerCase() : `${cleanQuery.toLowerCase().replace("@", "")}@sitesync.io`;
+      const u = cleanQuery.startsWith("@") ? cleanQuery : `@${cleanQuery.toLowerCase().replace("@", "")}`;
+      const formattedName = isEmail ? cleanQuery.split("@")[0] : cleanQuery;
 
       targetUser = await db.user.upsert({
         where: { email },
@@ -150,6 +122,25 @@ export async function POST(req: NextRequest) {
       },
       include: { contact: true },
     });
+
+    // Create mutual contact link so added friend also sees caller in contacts
+    try {
+      await db.userContact.upsert({
+        where: {
+          userId_contactId: {
+            userId: targetUser.id,
+            contactId: currentUser.id,
+          },
+        },
+        update: {},
+        create: {
+          userId: targetUser.id,
+          contactId: currentUser.id,
+        },
+      });
+    } catch {
+      // Ignore if junction exists
+    }
 
     return NextResponse.json({
       message: "Foydalanuvchi kontaktlaringizga muvaffaqiyatli qo'shildi!",

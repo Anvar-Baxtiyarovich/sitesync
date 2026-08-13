@@ -25,31 +25,7 @@ export async function POST() {
         { status: 403 }
       );
     }
-    // 1. Clean up junk / mock test users that don't match our real personnel emails
-    const realEmails = [
-      "xab8101@gmail.com",
-      "liwei@epc-partner.cn",
-      "sarah@qa-engineer.com",
-      "dmitry@civil-eng.ru",
-      "anvar@sitesync.io",
-    ];
-
-    try {
-      // Remove contacts & memberships for non-real emails
-      const junkUsers = await db.user.findMany({
-        where: { email: { notIn: realEmails } },
-      });
-
-      for (const j of junkUsers) {
-        await db.userContact.deleteMany({
-          where: { OR: [{ userId: j.id }, { contactId: j.id }] },
-        });
-        await db.groupMember.deleteMany({ where: { userId: j.id } });
-        await db.user.delete({ where: { id: j.id } });
-      }
-    } catch {
-      // Ignored if DB table not connected
-    }
+    // Seed real personnel without deleting existing users
 
     // 2. Upsert real professional personnel
     const seedUsers: Array<{

@@ -56,72 +56,17 @@ export const DEFAULT_PERSONNEL = [
  */
 export async function ensureDefaultPersonnelSeeded() {
   try {
-    const existingCount = await db.user.count({
-      where: {
-        email: {
-          in: DEFAULT_PERSONNEL.map((p) => p.email),
-        },
+    // Ensure default group exists for site sync
+    await db.projectGroup.upsert({
+      where: { code: "SYNC-WIND-88" },
+      update: {},
+      create: {
+        name: "Dashtobod Wind Turbine EPC Team 🌬️",
+        code: "SYNC-WIND-88",
+        description: "110kV Wind Turbine Project - Zone B Construction & Installation Group",
       },
     });
-
-    if (existingCount < DEFAULT_PERSONNEL.length) {
-      for (const p of DEFAULT_PERSONNEL) {
-        try {
-          await db.user.upsert({
-            where: { email: p.email },
-            update: {
-              fullName: p.fullName,
-              username: p.username,
-              jobTitle: p.jobTitle,
-              avatarUrl: p.avatarUrl,
-              role: p.role,
-              nativeLanguage: p.nativeLanguage,
-            },
-            create: p,
-          });
-        } catch {
-          // ignore duplicate constraint
-        }
-      }
-
-      // Ensure default group exists
-      const group = await db.projectGroup.upsert({
-        where: { code: "SYNC-WIND-88" },
-        update: {},
-        create: {
-          name: "Dashtobod Wind Turbine EPC Team 🌬️",
-          code: "SYNC-WIND-88",
-          description: "110kV Wind Turbine Project - Zone B Construction & Installation Group",
-        },
-      });
-
-      // Link personnel to group
-      const allUsers = await db.user.findMany({
-        where: { email: { in: DEFAULT_PERSONNEL.map((p) => p.email) } },
-      });
-
-      for (const u of allUsers) {
-        try {
-          await db.groupMember.upsert({
-            where: {
-              groupId_userId: {
-                groupId: group.id,
-                userId: u.id,
-              },
-            },
-            update: {},
-            create: {
-              groupId: group.id,
-              userId: u.id,
-              roleInGroup: u.role === "SYSTEM_ADMIN" ? "OWNER" : "MEMBER",
-            },
-          });
-        } catch {
-          // ignore junction constraint
-        }
-      }
-    }
   } catch (err: any) {
-    console.warn("⚠️ ensureDefaultPersonnelSeeded Error:", err.message);
+    console.warn("⚠️ ensureDefaultGroupSeeded Error:", err.message);
   }
 }
