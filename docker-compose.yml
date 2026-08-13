@@ -28,6 +28,7 @@ services:
       - "8000:8000"
     environment:
       - NLLB_MODEL_NAME=facebook/nllb-200-distilled-600M
+      - NLLB_API_KEY=${NLLB_API_KEY:-nllb_secret_key_123}
     restart: unless-stopped
 
 volumes:

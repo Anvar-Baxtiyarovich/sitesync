@@ -1,7 +1,7 @@
 import os
 import time
 from typing import List, Optional, Dict
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel
 import torch
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
@@ -21,6 +21,7 @@ LANG_MAP = {
 }
 
 MODEL_NAME = os.getenv("NLLB_MODEL_NAME", "facebook/nllb-200-distilled-600M")
+NLLB_API_KEY = os.getenv("NLLB_API_KEY", "")
 
 print(f"🔄 Loading NLLB Model ({MODEL_NAME})...")
 start_time = time.time()
@@ -56,7 +57,11 @@ def health_check():
     }
 
 
-@app.post("/translate", response_model=TranslationResponse)
+def verify_api_key(x_api_key: Optional[str] = Header(None)):
+    if NLLB_API_KEY and x_api_key != NLLB_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
+@app.post("/translate", response_model=TranslationResponse, dependencies=[Depends(verify_api_key)])
 def translate_text(req: TranslationRequest):
     if not req.text.strip():
         return TranslationResponse(

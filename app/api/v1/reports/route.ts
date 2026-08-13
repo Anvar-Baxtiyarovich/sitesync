@@ -1,18 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { translationQueue } from "@/lib/queue";
+import { z } from "zod";
+
+const ReportSchema = z.object({
+  sourceLanguage: z.string().optional().default("uz"),
+  reportDate: z.string(),
+  weatherCondition: z.enum(["SUNNY", "CLOUDY", "RAINY", "SNOWY", "WINDY", "EXTREME_HEAT"]).optional().default("SUNNY"),
+  activeWorkers: z.coerce.number().min(1).optional().default(1),
+  tasksCompletedRaw: z.string().min(1, "Tasks completed is required"),
+  equipmentReceivedRaw: z.string().optional(),
+  issuesEncounteredRaw: z.string().optional(),
+});
+
+const ReportUpdateSchema = ReportSchema.partial().extend({
+  reportId: z.string().optional(),
+  editReason: z.string().optional(),
+});
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
+async function getSessionUser() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return null;
+  return await db.user.findUnique({
+    where: { email: session.user.email },
+  });
+}
 
 export async function GET() {
   try {
     let reports: any[] = [];
     try {
       reports = await db.dailyReport.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 10,
+        orderBy: { reportDate: "desc" },
+        take: 15,
         include: { site: true, author: true },
       });
     } catch {
-      // Mock dev mode fallback
+      // Fallback if DB query fails
     }
 
     if (reports.length === 0) {
@@ -32,19 +60,6 @@ export async function GET() {
           issuesEncounteredRaw: "Shamol tezligi sababli kran ishlari to-xtatildi.",
           status: "TRANSLATED",
         },
-        {
-          id: "rpt_982346",
-          reportDate: "2026-08-08",
-          weatherCondition: "SUNNY",
-          activeWorkers: 38,
-          sourceLanguage: "uz",
-          version: 1,
-          isEdited: false,
-          tasksCompletedRaw: "3-sonli turbina simlarini tortish va transformator podstansiyasini sozlash.",
-          equipmentReceivedRaw: "5 tonna armatura va kabel roliklari.",
-          issuesEncounteredRaw: "Muammo yo-q.",
-          status: "TRANSLATED",
-        },
       ];
     }
 
@@ -60,7 +75,16 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const currentUser = await getSessionUser();
     const body = await req.json();
+    const parsed = ReportSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation error", details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
 
     const {
       sourceLanguage,
@@ -70,33 +94,56 @@ export async function POST(req: NextRequest) {
       tasksCompletedRaw,
       equipmentReceivedRaw,
       issuesEncounteredRaw,
-    } = body;
+    } = parsed.data;
 
-    if (!tasksCompletedRaw) {
-      return NextResponse.json(
-        { error: "Tasks completed field is required" },
-        { status: 400 }
-      );
-    }
-
-    // In production, fetch demo organization and site
+    // Get or create site and fallback author if DB testing
     let site = await db.site.findFirst();
-    let user = await db.user.findFirst();
-
-    if (!site || !user) {
-      // Mock ID fallback for dev testing
-      const reportId = `rpt_${Date.now()}`;
-      return NextResponse.json({
-        message: "Report accepted for translation queue (Mock Dev Mode)",
-        reportId,
+    if (!site) {
+      const org = await db.organization.create({
+        data: { name: "Dashtobod EPC Consortium" },
+      });
+      site = await db.site.create({
+        data: {
+          name: "Dashtobod Wind Turbine Project - Zone B",
+          location: "Jizzakh Region, Dashtobod",
+          code: "SYNC-SITE-01",
+          organizationId: org.id,
+        },
       });
     }
 
-    const report = await db.dailyReport.create({
-      data: {
+    const author = currentUser || (await db.user.findFirst());
+    if (!author) {
+      return NextResponse.json({ error: "Author not found" }, { status: 401 });
+    }
+
+    const parsedDate = reportDate ? new Date(reportDate) : new Date();
+
+    // Use upsert on unique constraint siteId_reportDate to prevent P2002 crash
+    const report = await db.dailyReport.upsert({
+      where: {
+        siteId_reportDate: {
+          siteId: site.id,
+          reportDate: parsedDate,
+        },
+      },
+      update: {
+        weatherCondition: weatherCondition || "SUNNY",
+        activeWorkers: Number(activeWorkers) || 1,
+        sourceLanguage: sourceLanguage || "uz",
+        tasksCompletedRaw,
+        equipmentReceivedRaw,
+        issuesEncounteredRaw,
+        status: "PROCESSING_TRANSLATION",
+        version: { increment: 1 },
+        isEdited: true,
+        lastEditedAt: new Date(),
+        editReason: "Hisobot ko'rsatkichlari qayta kiritildi",
+      },
+      create: {
         siteId: site.id,
-        authorId: user.id,
-        reportDate: new Date(reportDate),
+        authorId: author.id,
+        reportDate: parsedDate,
         weatherCondition: weatherCondition || "SUNNY",
         activeWorkers: Number(activeWorkers) || 1,
         sourceLanguage: sourceLanguage || "uz",
@@ -108,13 +155,17 @@ export async function POST(req: NextRequest) {
     });
 
     // Enqueue for BullMQ worker
-    await translationQueue.add("translate_report", {
-      reportId: report.id,
-      sourceLanguage: report.sourceLanguage,
-      tasks: tasksCompletedRaw,
-      equipment: equipmentReceivedRaw,
-      issues: issuesEncounteredRaw,
-    });
+    try {
+      await translationQueue.add("translate_report", {
+        reportId: report.id,
+        sourceLanguage: report.sourceLanguage,
+        tasks: tasksCompletedRaw,
+        equipment: equipmentReceivedRaw,
+        issues: issuesEncounteredRaw,
+      });
+    } catch (err) {
+      console.warn("BullMQ queue error (running async worker fallback):", err);
+    }
 
     return NextResponse.json({
       message: "Report submitted successfully and enqueued for translation.",
@@ -131,7 +182,20 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const currentUser = await getSessionUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
+    const parsed = ReportUpdateSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation error", details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
 
     const {
       reportId,
@@ -143,14 +207,7 @@ export async function PUT(req: NextRequest) {
       equipmentReceivedRaw,
       issuesEncounteredRaw,
       editReason,
-    } = body;
-
-    if (!tasksCompletedRaw) {
-      return NextResponse.json(
-        { error: "Tasks completed field is required" },
-        { status: 400 }
-      );
-    }
+    } = parsed.data;
 
     let report = null;
     if (reportId) {
@@ -176,14 +233,17 @@ export async function PUT(req: NextRequest) {
         },
       });
 
-      // Re-enqueue for translation
-      await translationQueue.add("translate_report", {
-        reportId: updatedReport.id,
-        sourceLanguage: updatedReport.sourceLanguage,
-        tasks: tasksCompletedRaw,
-        equipment: equipmentReceivedRaw,
-        issues: issuesEncounteredRaw,
-      });
+      try {
+        await translationQueue.add("translate_report", {
+          reportId: updatedReport.id,
+          sourceLanguage: updatedReport.sourceLanguage,
+          tasks: tasksCompletedRaw,
+          equipment: equipmentReceivedRaw,
+          issues: issuesEncounteredRaw,
+        });
+      } catch (err) {
+        console.warn("BullMQ queue error:", err);
+      }
 
       return NextResponse.json({
         message: "Report revised successfully and queued for translation update.",
@@ -192,14 +252,10 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    // Mock fallback response for dev testing
-    return NextResponse.json({
-      message: "Report revision accepted for translation (Mock Dev Mode)",
-      reportId: reportId || `rpt_${Date.now()}`,
-      version: 2,
-      isEdited: true,
-      editReason: editReason || "Correction to daily log",
-    });
+    return NextResponse.json(
+      { error: "Report not found" },
+      { status: 404 }
+    );
   } catch (error) {
     console.error("Report Revision API Error:", error);
     return NextResponse.json(

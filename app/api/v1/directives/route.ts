@@ -129,8 +129,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
     const body = await req.json();
-    const { titleRaw, descriptionRaw, priority, targetDate, category } = body;
+    const { titleRaw, descriptionRaw, priority, targetDate, category, sourceLanguage } = body;
 
     if (!titleRaw) {
       return NextResponse.json(
@@ -139,65 +140,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const srcLang = sourceLanguage || (session?.user?.nativeLanguage as string) || "zh";
+
     // Auto-translate title and description into UZ, RU, EN, ZH
-    const translatedTitle = await translateGroupChatMessage(titleRaw, "zh");
+    const translatedTitle = await translateGroupChatMessage(titleRaw, srcLang);
     const translatedDesc = descriptionRaw
-      ? await translateGroupChatMessage(descriptionRaw, "zh")
+      ? await translateGroupChatMessage(descriptionRaw, srcLang)
       : { uz: "", ru: "", en: "", zh: "" };
 
     const translationsJson = {
       uz: { title: translatedTitle.uz, description: translatedDesc.uz },
       ru: { title: translatedTitle.ru, description: translatedDesc.ru },
       en: { title: translatedTitle.en, description: translatedDesc.en },
-      zh: { title: titleRaw, description: descriptionRaw || "" },
+      zh: { title: translatedTitle.zh, description: translatedDesc.zh },
     };
 
-    let site = null;
-    try {
-      site = await db.site.findFirst();
-    } catch {
-      // Mock fallback
-    }
-
-    if (site) {
-      const directive = await db.workDirective.create({
+    let site = await db.site.findFirst();
+    if (!site) {
+      const org = await db.organization.create({ data: { name: "Dashtobod EPC Consortium" } });
+      site = await db.site.create({
         data: {
-          siteId: site.id,
-          titleRaw,
-          descriptionRaw: descriptionRaw || "",
-          priority: priority || "MEDIUM",
-          category: category || "GENERAL",
-          status: "PENDING_ACCEPTANCE",
-          progressPercent: 0,
-          targetDate: targetDate ? new Date(targetDate) : null,
-          translationsJson,
+          name: "Dashtobod Wind Turbine Project - Zone B",
+          location: "Jizzakh Region, Dashtobod",
+          code: "SYNC-SITE-01",
+          organizationId: org.id,
         },
       });
-
-      return NextResponse.json({
-        message: "Work directive created and sent with 4-way translation.",
-        directive,
-      });
     }
 
-    // Mock response for dev mode
-    const mockDirective = {
-      id: `dir_${Date.now()}`,
-      titleRaw,
-      descriptionRaw,
-      priority: priority || "HIGH",
-      category: category || "GENERAL",
-      status: "PENDING_ACCEPTANCE",
-      progressPercent: 0,
-      targetDate: targetDate || new Date().toISOString().split("T")[0],
-      createdAt: new Date().toISOString(),
-      acceptedAt: null,
-      translationsJson,
-    };
+    const directive = await db.workDirective.create({
+      data: {
+        siteId: site.id,
+        titleRaw,
+        descriptionRaw: descriptionRaw || "",
+        priority: priority || "MEDIUM",
+        category: category || "GENERAL",
+        status: "PENDING_ACCEPTANCE",
+        progressPercent: 0,
+        targetDate: targetDate ? new Date(targetDate) : null,
+        translationsJson,
+      },
+    });
 
     return NextResponse.json({
-      message: "Work directive issued with multi-lingual translation (Dev Mode)",
-      directive: mockDirective,
+      message: "Work directive created and sent with 4-way translation.",
+      directive,
     });
   } catch (error) {
     console.error("Create Directive Error:", error);
@@ -211,16 +198,22 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (session?.user?.email) {
-      const user = await db.user.findUnique({
-        where: { email: session.user.email },
-      });
-      if (user && !user.canAcceptDirectives && user.role !== "SYSTEM_ADMIN") {
-        return NextResponse.json(
-          { error: "Sizga topshiriqlarni boshqarish huquqi berilmagan." },
-          { status: 403 }
-        );
-      }
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Ruxsat etilmadi. Seans mavjud emas." },
+        { status: 401 }
+      );
+    }
+
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (user && !user.canAcceptDirectives && user.role !== "SYSTEM_ADMIN") {
+      return NextResponse.json(
+        { error: "Sizga topshiriqlarni boshqarish huquqi berilmagan." },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

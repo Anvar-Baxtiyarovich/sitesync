@@ -65,16 +65,22 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (session?.user?.email) {
-      const user = await db.user.findUnique({
-        where: { email: session.user.email },
-      });
-      if (user && !user.canCreateGroup && user.role !== "SYSTEM_ADMIN") {
-        return NextResponse.json(
-          { error: "Sizga yangi guruh yaratish huquqi berilmagan. Super Admin bilan bog'laning." },
-          { status: 403 }
-        );
-      }
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Ruxsat etilmadi. Seans mavjud emas." },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = await db.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (currentUser && !currentUser.canCreateGroup && currentUser.role !== "SYSTEM_ADMIN") {
+      return NextResponse.json(
+        { error: "Sizga yangi guruh yaratish huquqi berilmagan. Super Admin bilan bog'laning." },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
@@ -95,6 +101,20 @@ export async function POST(req: NextRequest) {
         description: description || "",
         code: groupCode,
       },
+    });
+
+    if (currentUser) {
+      await db.groupMember.create({
+        data: {
+          groupId: newGroup.id,
+          userId: currentUser.id,
+          roleInGroup: "OWNER",
+        },
+      });
+    }
+
+    const groupWithMembers = await db.projectGroup.findUnique({
+      where: { id: newGroup.id },
       include: {
         members: {
           include: { user: true },
@@ -104,7 +124,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       message: "Project group created successfully in PostgreSQL.",
-      group: newGroup,
+      group: groupWithMembers || newGroup,
     });
   } catch (error) {
     console.error("Create Group Error:", error);

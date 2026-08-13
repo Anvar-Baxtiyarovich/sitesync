@@ -20,7 +20,7 @@ const worker = new Worker(
         issues,
       });
 
-      if (reportId && !reportId.startsWith("rpt_")) {
+      if (reportId) {
         await db.dailyReport.update({
           where: { id: reportId },
           data: {
@@ -34,6 +34,16 @@ const worker = new Worker(
       return translationResult;
     } catch (err) {
       console.error(`Failed translation job ${job.id}:`, err);
+      if (reportId) {
+        try {
+          await db.dailyReport.update({
+            where: { id: reportId },
+            data: { status: "FAILED" },
+          });
+        } catch {
+          // Ignore DB error on failure handling
+        }
+      }
       throw err;
     }
   },
@@ -42,6 +52,16 @@ const worker = new Worker(
   }
 );
 
-worker.on("failed", (job, err) => {
+worker.on("failed", async (job, err) => {
   console.error(`Job ${job?.id} failed with error:`, err);
+  if (job?.data?.reportId) {
+    try {
+      await db.dailyReport.update({
+        where: { id: job.data.reportId },
+        data: { status: "FAILED" },
+      });
+    } catch {
+      // Ignore
+    }
+  }
 });

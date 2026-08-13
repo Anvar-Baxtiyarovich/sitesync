@@ -57,8 +57,7 @@ export default function FieldReportForm() {
   const { data: session } = useSession();
   const canAcceptDirectives =
     session?.user?.canAcceptDirectives !== false ||
-    session?.user?.role === 'SYSTEM_ADMIN' ||
-    session?.user?.email === 'xab8101@gmail.com';
+    session?.user?.role === 'SYSTEM_ADMIN';
 
   const [lang, setLang]                     = useState<'uz' | 'ru'>('uz');
   const [isEditMode, setIsEditMode]         = useState(false);

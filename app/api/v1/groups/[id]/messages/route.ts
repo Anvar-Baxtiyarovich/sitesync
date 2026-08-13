@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { translateGroupChatMessage } from "@/lib/translation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { pusherServer } from "@/lib/pusher";
 
 export const dynamic = "force-dynamic";
 
-async function ensureGroupAndUserExist(groupId: string, authorName: string, authorJob: string, authorAvatar: string, lang: string) {
+async function ensureGroupAndUserExist(
+  groupId: string,
+  authorName: string,
+  authorJob: string,
+  authorAvatar: string,
+  lang: string,
+  sessionUserEmail?: string | null
+) {
   // 1. Ensure Project Group exists in PostgreSQL DB
   await db.projectGroup.upsert({
     where: { id: groupId },
@@ -17,25 +27,33 @@ async function ensureGroupAndUserExist(groupId: string, authorName: string, auth
     },
   });
 
-  const username = `@${(authorName || "member").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
-  
-  // Try to find existing user first
-  let user = await db.user.findFirst({
-    where: {
-      OR: [
-        { fullName: authorName },
-        { username },
-      ],
-    },
-  });
+  let user = null;
+  if (sessionUserEmail) {
+    user = await db.user.findUnique({ where: { email: sessionUserEmail } });
+  }
+
+  if (!user && authorName) {
+    user = await db.user.findFirst({
+      where: {
+        OR: [
+          { fullName: authorName },
+          { username: `@${authorName.toLowerCase().replace(/[^a-z0-9]/g, "_")}` },
+        ],
+      },
+    });
+  }
 
   if (!user) {
-    const email = `${username.replace("@", "")}@user.local`;
+    user = await db.user.findFirst({ orderBy: { createdAt: "asc" } });
+  }
+
+  if (!user) {
+    const email = `specialist_${Date.now()}@sitesync.io`;
     user = await db.user.create({
       data: {
         email,
         fullName: authorName || "Site Specialist",
-        username,
+        username: `@user_${Date.now().toString().slice(-4)}`,
         jobTitle: authorJob || "Team Member",
         avatarUrl: authorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
         nativeLanguage: lang || "uz",
@@ -60,7 +78,7 @@ async function ensureGroupAndUserExist(groupId: string, authorName: string, auth
       },
     });
   } catch {
-    // Ignore junction constraint if already exists
+    // Junction constraint ignored if already exists
   }
 
   return user;
@@ -150,6 +168,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions);
     const groupId = params.id;
     const body = await req.json();
     const {
@@ -178,16 +197,17 @@ export async function POST(
     const lang = sourceLanguage || "uz";
     const translations = messageText ? await translateGroupChatMessage(messageText, lang) : { uz: '', ru: '', en: '', zh: '' };
 
-    // 1. Guarantee DB Group & User exist in PostgreSQL
+    // Guarantee DB Group & User exist in PostgreSQL
     const authorUser = await ensureGroupAndUserExist(
       groupId,
       authorName || "Site Manager",
       authorJob || "Field Specialist",
       authorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-      lang
+      lang,
+      session?.user?.email
     );
 
-    // 2. Persist message strictly into PostgreSQL Database
+    // Persist message strictly into PostgreSQL Database
     const savedMsg = await db.groupMessage.create({
       data: {
         groupId,
@@ -203,6 +223,9 @@ export async function POST(
       },
       include: { author: true },
     });
+
+    // Trigger Pusher WebSocket Event
+    await pusherServer.trigger(`group-${groupId}`, "new-message", savedMsg);
 
     return NextResponse.json({
       message: "Message saved to PostgreSQL and auto-translated for all group members.",

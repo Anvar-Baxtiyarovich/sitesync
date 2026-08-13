@@ -161,7 +161,8 @@ export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 41, 59);
-  const taskText = reportData.en.tasks + (isZh ? `\n(ZH: ${reportData.zh.tasks})` : '');
+  const rawTasks = reportData.en.tasks || reportData.zh.tasks || '';
+  const taskText = cleanTextForPdf(rawTasks);
   const splitTasks = doc.splitTextToSize(taskText, pageWidth - 36);
   doc.text(splitTasks, 18, y + 13);
 
@@ -179,7 +180,8 @@ export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 41, 59);
-  const equipText = reportData.en.equipment + (isZh ? `\n(ZH: ${reportData.zh.equipment})` : '');
+  const rawEquip = reportData.en.equipment || reportData.zh.equipment || 'N/A';
+  const equipText = cleanTextForPdf(rawEquip);
   const splitEquip = doc.splitTextToSize(equipText, pageWidth - 36);
   doc.text(splitEquip, 18, y + 13);
 
@@ -198,7 +200,8 @@ export function generateReportPdf(reportData: ReportData, lang: 'zh' | 'en') {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(120, 53, 15);
-  const issueText = reportData.en.issues + (isZh ? `\n(ZH: ${reportData.zh.issues})` : '');
+  const rawIssues = reportData.en.issues || reportData.zh.issues || 'No issues reported';
+  const issueText = cleanTextForPdf(rawIssues);
   const splitIssues = doc.splitTextToSize(issueText, pageWidth - 36);
   doc.text(splitIssues, 18, y + 13);
 

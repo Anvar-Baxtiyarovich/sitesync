@@ -7,14 +7,9 @@ export const dynamic = "force-dynamic";
 
 async function getCurrentUser() {
   const session = await getServerSession(authOptions);
-  if (session?.user?.email) {
-    const user = await db.user.findUnique({
-      where: { email: session.user.email },
-    });
-    if (user) return user;
-  }
-  return await db.user.findFirst({
-    orderBy: { createdAt: "asc" },
+  if (!session?.user?.email) return null;
+  return await db.user.findUnique({
+    where: { email: session.user.email },
   });
 }
 

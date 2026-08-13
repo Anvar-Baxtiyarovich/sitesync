@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Ruxsat etilmadi. Seans mavjud emas." },
+        { status: 401 }
+      );
+    }
+
+    const currentUser = await db.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (currentUser?.role !== "SYSTEM_ADMIN") {
+      return NextResponse.json(
+        { error: "Ruxsat etilmadi. Faqat Super Admin foydalana oladi." },
+        { status: 403 }
+      );
+    }
     // 1. Clean up junk / mock test users that don't match our real personnel emails
     const realEmails = [
       "xab8101@gmail.com",

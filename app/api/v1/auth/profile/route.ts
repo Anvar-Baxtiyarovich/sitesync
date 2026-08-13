@@ -17,8 +17,10 @@ export async function GET() {
   try {
     const user = await getSessionUser();
     if (!user) {
-      const firstUser = await db.user.findFirst({ orderBy: { createdAt: "asc" } });
-      return NextResponse.json({ user: firstUser });
+      return NextResponse.json(
+        { error: "Unauthorized", user: null },
+        { status: 401 }
+      );
     }
     return NextResponse.json({ user });
   } catch (error) {
@@ -33,10 +35,16 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const body = await req.json();
-    const { email, fullName, username, jobTitle, avatarUrl, nativeLanguage } = body;
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please log in first." },
+        { status: 401 }
+      );
+    }
 
-    const userEmail = session?.user?.email || email;
+    const body = await req.json();
+    const { fullName, username, jobTitle, avatarUrl, nativeLanguage } = body;
+    const userEmail = session.user.email;
 
     if (!userEmail || !fullName || !username) {
       return NextResponse.json(

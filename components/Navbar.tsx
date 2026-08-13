@@ -10,7 +10,7 @@ export default function Navbar() {
   const pathname = usePathname() || '/';
   const { data: session } = useSession();
 
-  const isSuperAdmin = session?.user?.role === 'SYSTEM_ADMIN' || session?.user?.email === 'xab8101@gmail.com';
+  const isSuperAdmin = session?.user?.role === 'SYSTEM_ADMIN';
 
   // Extract language from pathname e.g. /uz/groups -> uz
   const langMatch = pathname.match(/^\/(uz|ru|en|zh)/);

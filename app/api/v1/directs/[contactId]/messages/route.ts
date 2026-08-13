@@ -3,19 +3,15 @@ import { db } from "@/lib/db";
 import { translateGroupChatMessage } from "@/lib/translation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { pusherServer } from "@/lib/pusher";
 
 export const dynamic = "force-dynamic";
 
 async function getCurrentUser() {
   const session = await getServerSession(authOptions);
-  if (session?.user?.email) {
-    const user = await db.user.findUnique({
-      where: { email: session.user.email },
-    });
-    if (user) return user;
-  }
-  return await db.user.findFirst({
-    orderBy: { createdAt: "asc" },
+  if (!session?.user?.email) return null;
+  return await db.user.findUnique({
+    where: { email: session.user.email },
   });
 }
 
@@ -102,6 +98,9 @@ export async function POST(
       },
       include: { sender: true, receiver: true },
     });
+
+    const channelId = [currentUser.id, contactId].sort().join('-');
+    await pusherServer.trigger(`direct-${channelId}`, "new-message", directMsg);
 
     return NextResponse.json({
       message: "Direct message sent and translated.",

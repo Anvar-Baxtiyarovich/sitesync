@@ -14,8 +14,12 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       if (user.email) {
-        const isSuperAdmin = user.email === "xab8101@gmail.com";
-        const cleanUsername = `@${user.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        const userCount = await db.user.count();
+        // If this is the first user in DB or role was not set, make first user SYSTEM_ADMIN
+        const initialRole = userCount <= 1 ? "SYSTEM_ADMIN" : "LOCAL_MANAGER";
+        const baseUsername = `@${user.email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        const cleanUsername = `${baseUsername}_${user.id.slice(0, 4)}`;
+
         try {
           await db.user.update({
             where: { id: user.id },
@@ -24,7 +28,7 @@ export const authOptions: NextAuthOptions = {
               avatarUrl: user.image || undefined,
               username: cleanUsername,
               authProvider: "GOOGLE",
-              role: isSuperAdmin ? "SYSTEM_ADMIN" : "LOCAL_MANAGER",
+              role: initialRole,
               canCreateGroup: true,
               canAcceptDirectives: true,
               canSubmitReports: true,
@@ -40,7 +44,6 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
         try {
-          const isSuperAdmin = user.email === "xab8101@gmail.com";
           const existingUser = await db.user.findUnique({
             where: { email: user.email },
           });
@@ -54,7 +57,6 @@ export const authOptions: NextAuthOptions = {
                 avatarUrl: existingUser.avatarUrl || user.image,
                 googleId: account.providerAccountId,
                 authProvider: "GOOGLE",
-                ...(isSuperAdmin ? { role: "SYSTEM_ADMIN" } : {}),
               },
             });
           }

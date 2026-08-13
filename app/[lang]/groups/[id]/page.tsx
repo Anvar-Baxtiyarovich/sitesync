@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { Send, Image as ImageIcon, Mic, X, MoreVertical, Search, FileText, ChevronLeft, Volume2, Link as LinkIcon, UserPlus, Info } from 'lucide-react';
+import { pusherClient } from "@/lib/pusher-client";
 import { useNotifications } from '@/components/NotificationProvider';
 
 interface AuthorUser {
@@ -318,10 +321,28 @@ export default function GroupChatPage({ params }: { params: { lang: string; id: 
 
   useEffect(() => {
     fetchMessages();
-    // 5 soniyada bir yangi xabarlarni tekshirish
-    const pollInterval = setInterval(fetchMessages, 5000);
-    return () => clearInterval(pollInterval);
-  }, [groupId]);
+
+    // Setup Pusher Subscription
+    const channel = pusherClient.subscribe(`group-${groupId}`);
+    channel.bind("new-message", (newMsg: any) => {
+      setMessages((prev) => {
+        // Prevent duplicate messages if already in state
+        if (prev.find(m => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
+
+      sendNotification(
+        `💬 ${newMsg.author?.fullName || 'Yangi Xabar'}`,
+        newMsg.translationsJson?.[activeLang] || newMsg.contentRaw,
+        '💬',
+        'CHAT'
+      );
+    });
+
+    return () => {
+      pusherClient.unsubscribe(`group-${groupId}`);
+    };
+  }, [groupId, activeLang]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

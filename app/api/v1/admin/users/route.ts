@@ -13,9 +13,9 @@ async function isSystemAdmin() {
     const user = await db.user.findUnique({
       where: { email: session.user.email },
     });
-    return user?.role === "SYSTEM_ADMIN" || session.user.email === "xab8101@gmail.com";
+    return user?.role === "SYSTEM_ADMIN";
   } catch {
-    return session.user.email === "xab8101@gmail.com";
+    return false;
   }
 }
 

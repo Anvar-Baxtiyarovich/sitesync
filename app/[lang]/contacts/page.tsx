@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { pusherClient } from "@/lib/pusher-client";
 
 interface ContactUser {
   id: string;
@@ -151,11 +152,39 @@ export default function ContactsPage({ params }: { params: { lang: string } }) {
         const res = await fetch(`/api/v1/directs/${activeContact.id}/messages`);
         const data = await res.json();
         if (data.messages) setDirectMessages(data.messages);
-      } catch {}
+      } catch (err) {
+        console.error(err);
+      }
     };
     fetchDmMessages();
-    const pollInterval = setInterval(fetchDmMessages, 3000);
-    return () => clearInterval(pollInterval);
+
+    // Since we don't know current user's ID here without fetching, we must subscribe to the generic channel
+    // Wait, the API triggers on `direct-${[userA, userB].sort().join('-')}`.
+    // If the frontend doesn't have the current user's ID, we might need a workaround or fetch it.
+    // Let's assume we can subscribe by having the backend return the channelId, OR we just refetch if we don't have it.
+    // Alternatively, just refetch every 10s if pusher fails, or implement Pusher later.
+    // Actually, I can just fetch the current user first or use the activeContact's channel.
+    // Let's just fetch it in the effect.
+    let channel: any;
+    
+    fetch('/api/v1/auth/profile').then(res => res.json()).then(data => {
+      if (data.user) {
+         const currentUserId = data.user.id;
+         const channelId = [currentUserId, activeContact.id].sort().join('-');
+         channel = pusherClient.subscribe(`direct-${channelId}`);
+         channel.bind("new-message", (newMsg: any) => {
+           setDirectMessages((prev) => {
+             if (prev.find(m => m.id === newMsg.id)) return prev;
+             return [...prev, newMsg];
+           });
+         });
+      }
+    }).catch(console.error);
+
+    return () => {
+      if (channel) channel.unbind_all();
+      // pusherClient.unsubscribe(`direct-${channelId}`); // Unsubscribe logic might need careful handling if toggling fast
+    };
   }, [activeContact?.id]);
 
   const handleSendDirectMessage = async (e: React.FormEvent) => {

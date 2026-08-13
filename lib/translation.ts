@@ -130,11 +130,14 @@ async function callNllbServer(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     const res = await fetch(`${serverUrl}/translate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "X-API-Key": process.env.NLLB_API_KEY || "nllb_secret_key_123"
+      },
       body: JSON.stringify({
         text,
         source_lang: sourceLang,
